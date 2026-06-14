@@ -1,0 +1,5 @@
+# Optional gitleaks configuration. Extends the default ruleset.
+# To activate it, uncomment the `--config=.gitleaks.toml` arg in
+# .pre-commit-config.yaml.
+[extend]
+useDefault = true

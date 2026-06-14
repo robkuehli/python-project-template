@@ -1,0 +1,40 @@
+# {{ project_name }}
+
+{{ project_description }}
+
+## Requirements
+
+- Python {{ python_version }}
+- [uv](https://docs.astral.sh/uv/) — dependency & environment management
+- [just](https://github.com/casey/just) — task runner
+
+## Getting started
+
+```bash
+just install   # create the venv, install deps, install git hooks
+just qa        # lint + type-check + tests
+```
+
+Run `just` (or `just --list`) to see every available recipe.
+
+## Layout
+
+```text
+src/{{ package_name }}/   # the package
+tests/                    # pytest tests
+docs/                     # MkDocs documentation
+guidelines/               # team coding standards
+skills/                   # reusable agent skills (SKILL.md)
+AGENTS.md                 # instructions for AI coding agents
+```
+
+## Documentation
+
+Built with MkDocs (Material). Preview locally with `just docs`; it is deployed to
+GitHub Pages automatically on push to `main`.
+
+## Updating from the template
+
+```bash
+just update   # runs `copier update`
+```

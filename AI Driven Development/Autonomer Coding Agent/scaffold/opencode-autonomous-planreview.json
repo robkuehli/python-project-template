@@ -1,0 +1,74 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "_comment": "OVERLAY-Profil fuer die optionale Planner/Reviewer-Schicht (ADR-011). Identisch zu opencode-autonomous.json, ABER: plan + reviewer + security-auditor laufen auf einem GUENSTIGEN Open-Weight Cloud-Modell, waehrend der Worker (build) LOKAL bleibt. Idee: das staerkere Cloud-Modell traegt die kognitive Last (Plan-Dekomposition, unabhaengiges Review), das lokale Modell macht das Token-intensive Implementieren. Aktivierung: der Orchestrator setzt OPENCODE_CONFIG auf diese Datei, wenn PLANNER_REVIEWER=on. Achtung: zaehlt auf das Cloud-Budget (jeder Plan-/Review-Call ist ein Cloud-Call).",
+
+  "instructions": [
+    "AGENTS.md",
+    ".specify/memory/constitution.md",
+    "LEARNINGS.md"
+  ],
+
+  "provider": {
+    "ollama": {
+      "name": "Ollama (lokal + Cloud)",
+      "baseURL": "{env:OLLAMA_BASE_URL}",
+      "apiKey": "{env:OLLAMA_API_KEY}",
+      "models": {
+        "qwen3-coder:30b":        { "name": "Qwen3 Coder 30B (lokal, Worker)" },
+        "llama3.2:3b":            { "name": "Llama 3.2 3B (lokal, small_model)" },
+        "gpt-oss:20b-cloud":      { "name": "gpt-oss 20B (Ollama Cloud) — guenstiger Planner/Reviewer" },
+        "qwen3-coder-next-cloud": { "name": "Qwen3-Coder-Next (Ollama Cloud) — alt. Planner" },
+        "glm-5.1-cloud":          { "name": "GLM-5.1 (Ollama Cloud) — alt. Reviewer agentic SWE" }
+      }
+    }
+  },
+
+  "model": "ollama/qwen3-coder:30b",
+  "small_model": "ollama/llama3.2:3b",
+  "max_concurrent_tasks": 1,
+
+  "_agent_note": "build LOKAL (Worker, Hauptarbeit), plan + reviewer + security-auditor auf guenstigem Cloud-Open-Weight. gpt-oss:20b-cloud als Default-Planner/Reviewer (billig); fuer haerteres Review glm-5.1-cloud setzen. researcher bleibt lokal (read-heavy, kein Cloud-Bedarf).",
+  "agent": {
+    "build":            { "model": "ollama/qwen3-coder:30b" },
+    "plan":             { "model": "ollama/gpt-oss:20b-cloud" },
+    "reviewer":         { "model": "ollama/gpt-oss:20b-cloud" },
+    "researcher":       { "model": "ollama/llama3.2:3b" },
+    "security-auditor": { "model": "ollama/gpt-oss:20b-cloud" }
+  },
+
+  "permissions": {
+    "edit": "allow",
+    "write": "allow",
+    "bash": {
+      "*": "allow",
+      "git push *":    "deny",
+      "git remote *":  "deny",
+      "rm -rf /*":     "deny",
+      "rm -rf ~*":     "deny",
+      "sudo *":        "deny",
+      "chmod 777*":    "deny",
+      "curl * | bash": "deny",
+      "wget * | bash": "deny",
+      "curl * | sh":   "deny",
+      "wget * | sh":   "deny",
+      "DROP TABLE*":   "deny",
+      "TRUNCATE*":     "deny",
+      "dd if=*":       "deny",
+      ":(){ :|:& };:": "deny"
+    },
+    "read": {
+      "*": "allow",
+      "**/.env":          "deny",
+      "**/.env.*":        "deny",
+      "**/secrets.*":     "deny",
+      "**/*secret*":      "deny",
+      "**/*credentials*": "deny",
+      "**/id_rsa*":       "deny",
+      "**/id_ed25519*":   "deny",
+      "**/*.pem":         "deny",
+      "**/*.key":         "deny"
+    },
+    "webfetch": "allow"
+  }
+}

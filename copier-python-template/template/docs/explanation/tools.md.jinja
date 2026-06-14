@@ -1,0 +1,120 @@
+# Tools &amp; architecture
+
+This page explains *why* the project is set up the way it is and how the tools fit
+together. It is understanding-oriented — for step-by-step instructions, see the
+[how-to guide](../how-to/use-the-template.md), and for a quick lookup table see the
+[tools reference](../reference/tools.md).
+
+## The big picture
+
+The tooling sits on four layers, each with a distinct job:
+
+- **uv** is the engine. It manages the Python interpreter, the virtual
+  environment, and dependencies (read from `pyproject.toml` and pinned in
+  `uv.lock`). It does the actual installing and running.
+- **pre-commit** is the quality gate. On every commit it runs the checks —
+  formatting, linting, typing, security, tests — so problems are caught before
+  they land in history.
+- **just** is the command layer. It does no real work itself; it gives short,
+  uniform names (`just test`, `just qa`) to the real commands underneath
+  (`uv run pytest`, `pre-commit run …`). One vocabulary for humans, CI, and
+  coding agents.
+- **Copier** is the scaffolding layer, one level *above* the project. It generated
+  this project from a template and can pull future template improvements back in
+  via `copier update`.
+
+A useful way to hold it: uv and pre-commit *do* the work, just standardizes *how*
+you trigger it, and Copier governs *how the project is created and kept current*.
+
+Copier and just are, strictly speaking, optional and replaceable — you could clone
+the repo, run `uv sync`, and call the tools directly. What they buy you is
+consistency across many projects (Copier) and a stable, discoverable command
+surface (just). Copier is used rarely (at creation, then on template updates);
+just is used every day.
+
+## The tools in detail
+
+### uv — environment &amp; dependencies
+
+Manages the Python {{ python_version }} interpreter, the `.venv`, and all
+dependencies. Runtime dependencies live under `[project.dependencies]`; tooling
+lives in `[dependency-groups]` (`dev` and `docs`). `uv sync` makes the environment
+match the lockfile; `uv run …` executes a command inside it.
+
+### just — task runner
+
+A thin wrapper that maps memorable recipes to real commands (see the `justfile`).
+It is the single entry point that `AGENTS.md`, CI, and you all share, so "how do I
+run the tests" has one answer in every project.
+
+### Copier — project generator
+
+Generated this project from a template by filling placeholders (name, package,
+Python version, …) recorded in `.copier-answers.yml`. Running `copier update`
+re-applies an updated template and merges improvements into the project.
+
+### pre-commit — orchestrates the checks
+
+Defined in `.pre-commit-config.yaml`. Remote hooks (Ruff, Bandit, Gitleaks,
+hygiene checks) run in isolated environments; local hooks (mypy, pylint,
+{% if include_sql %}sqlfluff, {% endif %}pytest) run in *your* environment so imports resolve correctly.
+`default_language_version` is pinned to Python {{ python_version }}.
+
+### Ruff — linter &amp; formatter
+
+The fast, primary linter and code formatter (configured in `[tool.ruff]`). It
+covers import sorting, modernizations, bug patterns, and Google-style docstrings,
+and replaces the need for separate tools like isort/flake8/black.
+
+### mypy — static type checking
+
+Runs in `strict` mode (`[tool.mypy]`) and verifies type hints across `src` and
+`tests`. Targets Python {{ python_version }}.
+
+### Pylint — deeper linting
+
+A second, more opinionated linter (`[tool.pylint]`) that catches design and
+correctness issues Ruff does not. The hook fails the commit if the score drops
+below 9; rules that overlap with Ruff are disabled to avoid duplicate noise.
+
+### Bandit — security linting
+
+Scans for common security issues (e.g. unsafe calls). Configured under
+`[tool.bandit]`, with `.venv` and the built docs excluded so it does not scan
+dependencies.
+
+### Gitleaks &amp; hygiene hooks — secrets &amp; repo hygiene
+
+Gitleaks scans for committed secrets; `detect-private-key` blocks key material;
+the `pre-commit-hooks` set fixes whitespace/EOLs and validates YAML/TOML and merge
+conflicts. Together they keep the repository clean and credential-free.
+
+### pytest — tests
+
+The test runner (`[tool.pytest.ini_options]`), with `pytest-sugar` for nicer
+output and `pytest-cov`/`coverage` for coverage (`[tool.coverage]`). Tests live in
+`tests/`.
+{% if include_sql %}
+### sqlfluff — SQL linting (optional)
+
+Lints and formats `.sql` files (`[tool.sqlfluff]`). A `dialect` is required and is
+set to `{{ sql_dialect }}`; the hook only triggers when SQL files change.
+{% endif %}
+### MkDocs — documentation
+
+Builds this site with the Material theme. `mkdocstrings` generates the API
+reference from docstrings, and the changelog page is pulled straight from
+`CHANGELOG.md`. Configured in `mkdocs.yml`.
+
+### GitHub Actions &amp; Dependabot — CI and updates
+
+`ci.yml` runs uv, the pre-commit checks, and pytest on every push and PR;
+`docs.yml` deploys the docs to GitHub Pages. Dependabot proposes weekly updates
+for dependencies and Actions.
+
+### Agent files, skills &amp; env
+
+`AGENTS.md` is the single source of truth for AI coding agents (read natively by
+Claude Code, Codex CLI, and Open Code). Reusable agent procedures live in
+`skills/` (SKILL.md format). Local secrets go in `.env` (git-ignored), copied from
+the tracked `.env.template`.

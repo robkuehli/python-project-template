@@ -1,0 +1,53 @@
+site_name: {{ project_name }}
+site_description: {{ project_description }}
+site_url: https://{{ github_username }}.github.io/{{ project_slug }}/
+repo_url: https://github.com/{{ github_username }}/{{ project_slug }}
+repo_name: {{ github_username }}/{{ project_slug }}
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+
+nav:
+  - Home: index.md
+  - Explanation:
+      - Tools &amp; architecture: explanation/tools.md
+  - How-to guides:
+      - Use the template: how-to/use-the-template.md
+  - Reference:
+      - Tools: reference/tools.md
+      - API: reference/{{ package_name }}.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ["."]

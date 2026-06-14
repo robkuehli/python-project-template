@@ -1,0 +1,163 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "30000",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "16384",
+    "ANTHROPIC_BASE_URL": "https://litellm.internal.example.com",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-7",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "LS",
+      "WebSearch",
+      "WebFetch",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git stash*)",
+      "Bash(git fetch*)",
+      "Bash(npm run *)",
+      "Bash(npm test*)",
+      "Bash(npm install*)",
+      "Bash(npx *)",
+      "Bash(pnpm *)",
+      "Bash(yarn *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(pip install*)",
+      "Bash(pip3 install*)",
+      "Bash(uv *)",
+      "Bash(uvx *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)",
+      "Bash(pre-commit *)",
+      "Bash(pytest*)",
+      "Bash(dbt *)",
+      "Bash(node *)",
+      "Bash(ts-node *)",
+      "Bash(tsc*)",
+      "Bash(make *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(touch *)",
+      "Bash(docker ps*)",
+      "Bash(docker logs*)",
+      "Bash(docker compose *)",
+      "Bash(docker-compose *)",
+      "Write",
+      "Edit",
+      "MultiEdit"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "Bash(git rebase*)",
+      "Bash(git reset*)",
+      "Bash(git merge*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secrets.*)",
+      "Read(**/*secret*)",
+      "Read(**/*credentials*)",
+      "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Write(.env)",
+      "Write(.env.*)",
+      "Write(**/*.pem)",
+      "Write(**/*.key)",
+      "Bash(rm -rf *)",
+      "Bash(rm -rf*)",
+      "Bash(sudo rm*)",
+      "Bash(chmod 777*)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | bash)",
+      "Bash(curl * | sh)",
+      "Bash(DROP *)",
+      "Bash(DROP TABLE*)",
+      "Bash(TRUNCATE*)"
+    ],
+    "defaultMode": "default"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(jq -r '.tool_input.file_path // empty'); if [[ \"$FILE\" == *.py ]] && command -v ruff >/dev/null 2>&1; then ruff format \"$FILE\" >/dev/null 2>&1; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CMD=$(jq -r '.tool_input.command // empty'); if echo \"$CMD\" | grep -qE 'rm -rf /|sudo rm -rf|curl .* \\| (bash|sh)|wget .* \\| (bash|sh)'; then echo \"Blocked: dangerous command pattern detected: $CMD\" >&2; exit 2; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/capture-learnings.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/surface-inbox.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "model": "sonnet",
+  "effortLevel": "high",
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "serena@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true
+  }
+}

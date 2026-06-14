@@ -1,0 +1,24 @@
+# Tools reference
+
+Lookup table for every tool in this project: what it does, where it is configured,
+and how it runs. For the reasoning behind the stack, see
+[Tools &amp; architecture](../explanation/tools.md).
+
+| Tool | Purpose | Configured in | Runs via |
+| --- | --- | --- | --- |
+| `uv` | Python {{ python_version }} interpreter, venv, dependencies | `pyproject.toml` (`[project]`, `[dependency-groups]`), `uv.lock` | `just install`, `uv sync`, `uv run` |
+| `just` | Task runner / command surface | `justfile` | `just`, `just --list` |
+| `Copier` | Project generator &amp; template updates | `copier.yml`, `.copier-answers.yml` | `copier copy`, `just update` |
+| `pre-commit` | Orchestrates the checks on commit | `.pre-commit-config.yaml` | git commit, `just lint` |
+| `Ruff` | Linter + formatter | `[tool.ruff]` | pre-commit (`ruff`, `ruff-format`), `just format` |
+| `mypy` | Static type checking (strict) | `[tool.mypy]` | pre-commit (local), `just typecheck` |
+| `Pylint` | Deeper linting (fail under 9) | `[tool.pylint]` | pre-commit (local) |
+| `Bandit` | Security linting | `[tool.bandit]` | pre-commit (`bandit`) |
+| `Gitleaks` | Secret scanning | `.gitleaks.toml` (optional) | pre-commit (`gitleaks`) |
+| `pre-commit-hooks` | Whitespace, EOL, YAML/TOML, keys, conflicts | built-in | pre-commit |
+| `pytest` | Test runner (+ `pytest-sugar`) | `[tool.pytest.ini_options]` | pre-commit (local), `just test` |
+| `coverage` | Test coverage (`pytest-cov`) | `[tool.coverage]` | `just cov` |
+{% if include_sql %}| `sqlfluff` | SQL linter/formatter (dialect `{{ sql_dialect }}`) | `[tool.sqlfluff]` | pre-commit (`sqlfluff-lint`) |
+{% endif %}| `MkDocs` | Documentation site (Material + mkdocstrings) | `mkdocs.yml` | `just docs`, Docs workflow |
+| `GitHub Actions` | CI + docs deploy | `.github/workflows/` | push / pull request |
+| `Dependabot` | Weekly dependency &amp; Action updates | `.github/dependabot.yml` | scheduled |

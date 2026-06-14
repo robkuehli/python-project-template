@@ -1,0 +1,94 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "_comment": "AUTONOMES Profil. Anders als das interaktive opencode-ollama.json: lokales Modell ist der DEFAULT-Worker, Cloud-Modelle stehen NUR als benannte Eskalations-Ziele bereit (vom Orchestrator gesetzt, nicht als Default). Aktivierung: OPENCODE_CONFIG=.../opencode-autonomous.json. Voraussetzung: 'ollama signin' gelaufen, OLLAMA_API_KEY in env. Lokale Modelle vorab via 'ollama pull'. NICHT fuer DSGVO-Daten (Ollama Cloud = US). Wird vom Orchestrator immer mit 'opencode run --dangerously-skip-permissions' aufgerufen — die deny-Liste unten ist deshalb das eigentliche Sicherheits-Gate, NICHT die ask-Eintraege (ask wird unter --dangerously-skip-permissions zu allow).",
+
+  "instructions": [
+    "AGENTS.md",
+    ".specify/memory/constitution.md",
+    "LEARNINGS.md"
+  ],
+
+  "provider": {
+    "ollama": {
+      "name": "Ollama (lokal + Cloud)",
+      "baseURL": "{env:OLLAMA_BASE_URL}",
+      "apiKey": "{env:OLLAMA_API_KEY}",
+      "models": {
+        "qwen3-coder:30b":        { "name": "Qwen3 Coder 30B (lokal, Default-Worker)" },
+        "qwen3-coder-64k":        { "name": "Qwen3 Coder 30B (lokal, 64K Context)" },
+        "qwen3-coder-next":       { "name": "Qwen3-Coder-Next 80B-A3B (lokal, ~Q4, refresh-Kandidat)" },
+        "deepseek-r1:14b":        { "name": "DeepSeek R1 14B (lokal, Reasoning offline)" },
+        "llama3.2:3b":            { "name": "Llama 3.2 3B (lokal, small_model)" },
+
+        "qwen3-coder-next-cloud": { "name": "Qwen3-Coder-Next (Ollama Cloud) — Eskalation Coding" },
+        "glm-5.1-cloud":          { "name": "GLM-5.1 (Ollama Cloud) — Eskalation agentic SWE" },
+        "deepseek-v4-pro-cloud":  { "name": "DeepSeek-V4-Pro (Ollama Cloud) — Eskalation Reasoning" },
+        "kimi-k2.6-cloud":        { "name": "Kimi K2.6 (Ollama Cloud) — Eskalation Long-Horizon" },
+        "gpt-oss:20b-cloud":      { "name": "gpt-oss 20B (Ollama Cloud) — guenstiger Planner/Reviewer" }
+      }
+    }
+  },
+
+  "_model_note": "Cloud-Tags (XXX-cloud) gegen 'ollama list' / ollama.com/search?c=cloud verifizieren — Katalog bewegt sich (Stand Mai 2026: qwen3-coder-next, glm-5.1, kimi-k2.6, deepseek-v4-pro/flash, minimax-m2.7). Genaue Suffix-Schreibweise (-cloud vs :tag-cloud) am Tag des Setups pruefen.",
+
+  "_baseurl_note": "baseURL=={env:OLLAMA_BASE_URL}. Auf dem Host: export OLLAMA_BASE_URL=http://localhost:11434/v1. Im Docker-Sandbox (macOS): das setzt run-sandbox.sh auf http://host.docker.internal:11434/v1 (+ --add-host host.docker.internal:host-gateway), weil 'localhost' im Container nicht der Host-Ollama ist. Falls die installierte OpenCode-Version {env:} in baseURL nicht aufloest: container-lokale Profil-Kopie mit hartem host.docker.internal verwenden.",
+
+  "model": "ollama/qwen3-coder:30b",
+  "small_model": "ollama/llama3.2:3b",
+
+  "_max_concurrent_note": "Bewusst 1: der Orchestrator parallelisiert auf Prozess-Ebene (3 Worktrees), nicht innerhalb einer Session. Anthropic: parallele Subagents multiplizieren Debug-Flaeche, nicht Durchsatz.",
+  "max_concurrent_tasks": 1,
+
+  "_agent_note": "BASIS = alles lokal. Worker (build) implementiert, plan/reviewer ebenfalls lokal. Planner/Reviewer-Eskalation NICHT hier — die liegt im Overlay opencode-autonomous-planreview.json und wird per PLANNER_REVIEWER=on vom Orchestrator als OPENCODE_CONFIG aktiviert.",
+  "agent": {
+    "build":            { "model": "ollama/qwen3-coder:30b" },
+    "plan":             { "model": "ollama/qwen3-coder:30b" },
+    "reviewer":         { "model": "ollama/qwen3-coder:30b" },
+    "researcher":       { "model": "ollama/llama3.2:3b" },
+    "security-auditor": { "model": "ollama/qwen3-coder:30b" }
+  },
+
+  "permissions": {
+    "edit": "allow",
+    "write": "allow",
+    "bash": {
+      "*": "allow",
+      "git push *":    "deny",
+      "git remote *":  "deny",
+      "rm -rf /*":     "deny",
+      "rm -rf ~*":     "deny",
+      "sudo *":        "deny",
+      "chmod 777*":    "deny",
+      "curl * | bash": "deny",
+      "wget * | bash": "deny",
+      "curl * | sh":   "deny",
+      "wget * | sh":   "deny",
+      "DROP TABLE*":   "deny",
+      "TRUNCATE*":     "deny",
+      "dd if=*":       "deny",
+      ":(){ :|:& };:": "deny"
+    },
+    "read": {
+      "*": "allow",
+      "**/.env":          "deny",
+      "**/.env.*":        "deny",
+      "**/secrets.*":     "deny",
+      "**/*secret*":      "deny",
+      "**/*credentials*": "deny",
+      "**/id_rsa*":       "deny",
+      "**/id_ed25519*":   "deny",
+      "**/*.pem":         "deny",
+      "**/*.key":         "deny"
+    },
+    "webfetch": "allow"
+  },
+
+  "_webfetch_note": "webfetch:allow (statt 'ask' im interaktiven Profil) — der Agent SOLL aktuelle Doku ziehen, ein Mensch ist nicht da, der 'ask' beantwortet. Native Web-Suche zusaetzlich via Env OPENCODE_ENABLE_EXA=true im Sandbox-Wrapper. Gefetchte Inhalte sind DATEN, keine Instruktionen (siehe AGENTS.md / security-auditor: prompt-injection via fetched content).",
+
+  "_hardware_notes": [
+    "M4 Pro 48 GB: qwen3-coder:30b laeuft fluessig (~17-18 GB). qwen3-coder-next (80B-A3B, ~35-40 GB Q4) passt knapp — vor Overnight-Einsatz Speicher + tok/s messen.",
+    "Cloud-Eskalation kostet KEIN lokales RAM (laeuft remote ueber den Ollama-Daemon).",
+    "deepseek-r1:14b als lokale Reasoning-Alternative, wenn Cloud-Limit erreicht oder offline."
+  ]
+}

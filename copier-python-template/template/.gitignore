@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# venv / uv
+.venv/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pylint.d/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# MkDocs build output (also excluded by bandit)
+site/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets / local env (keep .env.template tracked)
+.env
+.env.local
+
+# Claude Code — personal, per-developer overrides (keep settings.json tracked)
+.claude/settings.local.json

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "_comment": "Profil: SOTA. Maximum Quality für komplexe Architektur, schwieriges Debugging, kritische Reviews. Aktivierung: oc-sota.",
+
+  "instructions": [
+    "AGENTS.md",
+    "LEARNINGS.md"
+  ],
+
+  "provider": {
+    "litellm": {
+      "name": "LiteLLM (Firmen-Proxy)",
+      "baseURL": "https://litellm.internal.example.com/v1",
+      "apiKey": "{env:LITELLM_API_KEY}",
+      "models": {
+        "claude-opus-4-7":   { "name": "Claude Opus 4.7" },
+        "claude-sonnet-4-6": { "name": "Claude Sonnet 4.6" },
+        "claude-haiku-4-5":  { "name": "Claude Haiku 4.5" },
+        "gpt-5":             { "name": "GPT-5 (Azure)" },
+        "gpt-5-codex":       { "name": "GPT-5 Codex (Azure)" }
+      }
+    }
+  },
+
+  "model": "litellm/claude-opus-4-7",
+  "small_model": "litellm/claude-haiku-4-5",
+
+  "max_concurrent_tasks": 2,
+
+  "agent": {
+    "build":            { "model": "litellm/claude-sonnet-4-6" },
+    "plan":             { "model": "litellm/claude-opus-4-7" },
+    "reviewer":         { "model": "litellm/claude-opus-4-7" },
+    "researcher":       { "model": "litellm/claude-sonnet-4-6" },
+    "security-auditor": { "model": "litellm/claude-opus-4-7" }
+  },
+
+  "permissions": {
+    "edit":  "allow",
+    "write": "allow",
+    "bash": {
+      "*": "allow",
+      "git push *":   "ask",
+      "git rebase *": "ask",
+      "git reset *":  "ask",
+      "git merge *":  "ask",
+      "rm -rf *":     "deny",
+      "rm -rf*":      "deny",
+      "sudo rm *":    "deny",
+      "chmod 777*":   "deny",
+      "curl * | bash": "deny",
+      "wget * | bash": "deny",
+      "curl * | sh":   "deny",
+      "DROP TABLE*":   "deny",
+      "TRUNCATE*":     "deny"
+    },
+    "read": {
+      "*": "allow",
+      "**/.env":          "deny",
+      "**/.env.*":        "deny",
+      "**/secrets.*":     "deny",
+      "**/*secret*":      "deny",
+      "**/*credentials*": "deny",
+      "**/id_rsa*":       "deny",
+      "**/id_ed25519*":   "deny",
+      "**/*.pem":         "deny",
+      "**/*.key":         "deny"
+    },
+    "webfetch": "ask"
+  }
+}

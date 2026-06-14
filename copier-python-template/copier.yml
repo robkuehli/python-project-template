@@ -1,0 +1,121 @@
+# Copier configuration for a standard Python project template
+# (uv + just + pre-commit + mkdocs).
+#
+# Docs:  https://copier.readthedocs.io
+# Usage:
+#   uv tool install copier
+#   copier copy --trust gh:{{ '<you>' }}/copier-python-template path/to/new-project
+#
+# The actual template lives in the `template/` subdirectory.
+
+_subdirectory: "template"
+_min_copier_version: "9.0.0"
+_answers_file: ".copier-answers.yml"
+
+# Files inside template/ to skip entirely.
+_exclude:
+  - ".git"
+  - "__pycache__"
+  - "*.py[co]"
+
+# Post-generation tasks. Only run when Copier is invoked with `--trust`.
+# Without --trust, the project is generated but these are skipped.
+_tasks:
+  - "git init -q -b main"
+  - "uv sync"
+  - "uv run pre-commit install"
+
+# ---------------------------------------------------------------------------
+# Questions
+# ---------------------------------------------------------------------------
+project_name:
+  type: str
+  help: "Human-readable project name (e.g. 'My Awesome Project')"
+
+project_slug:
+  type: str
+  help: "Repository / directory name (kebab-case)"
+  default: "{{ project_name | lower | replace(' ', '-') | replace('_', '-') }}"
+
+package_name:
+  type: str
+  help: "Importable Python package name (snake_case)"
+  default: "{{ project_slug | lower | replace('-', '_') }}"
+
+project_description:
+  type: str
+  help: "One-line description of the project"
+  default: "A standard Python project."
+
+author_name:
+  type: str
+  help: "Author / maintainer name"
+  default: "Your Name"
+
+author_email:
+  type: str
+  help: "Author / maintainer email"
+  default: "you@example.com"
+
+github_username:
+  type: str
+  help: "GitHub username or org (used for URLs)"
+  default: "your-username"
+
+python_version:
+  type: str
+  help: "Target Python version"
+  default: "3.13"
+  choices:
+    - "3.12"
+    - "3.13"
+    - "3.14"
+    - "3.15"
+
+coding_agents:
+  type: str
+  multiselect: true
+  help: "Set up config folders for which coding agents? (AGENTS.md is always created)"
+  choices:
+    "Claude Code (.claude/, CLAUDE.md)": "claude_code"
+    "Codex CLI (AGENTS.md only)": "codex"
+    "Open Code (.opencode/ + opencode.json)": "opencode"
+    "GitHub Copilot (.github/copilot-instructions.md)": "copilot"
+  default:
+    - "claude_code"
+    - "codex"
+
+claude_provider:
+  type: str
+  help: "How does Claude Code authenticate?"
+  choices:
+    "LiteLLM gateway → Bedrock (company)": "litellm"
+    "Claude subscription (Pro/Max, /login)": "subscription"
+  default: "litellm"
+  when: "{{ 'claude_code' in coding_agents }}"
+
+litellm_base_url:
+  type: str
+  help: "LiteLLM gateway base URL (the auth token goes in your shell, never committed)"
+  default: "https://litellm.internal.example.com"
+  when: "{{ 'claude_code' in coding_agents and claude_provider == 'litellm' }}"
+
+include_sql:
+  type: bool
+  help: "Include SQL tooling (sqlfluff pre-commit hook + config)?"
+  default: true
+
+sql_dialect:
+  type: str
+  help: "Default SQL dialect for sqlfluff"
+  default: "ansi"
+  when: "{{ include_sql }}"
+
+license:
+  type: str
+  help: "License (choose 'Proprietary' for a private/closed project)"
+  default: "Proprietary"
+  choices:
+    - "Proprietary"
+    - "MIT"
+    - "Apache-2.0"
