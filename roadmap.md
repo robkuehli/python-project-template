@@ -1,0 +1,2 @@
+Copier-Switch sandbox_restrict_egress: bool + Sidecar-Egress-Proxy (z.B. tinyproxy mit Allowlist auf api.anthropic.com, pypi.org, registry.npmjs.org, github.com). Agent kriegt HTTPS_PROXY env. Echt wirksam, aber großes Feature: Proxy-Container, Allowlist als Copier-Antwort, Test-Coverage, Doku — ~300 Zeilen zusätzlicher Template-Code.
+se

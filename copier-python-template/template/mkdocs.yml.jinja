@@ -36,11 +36,40 @@ nav:
   - Home: index.md
   - Explanation:
       - Tools &amp; architecture: explanation/tools.md
+      - Developer workflow: explanation/developer-workflow.md
+      - Working with agents: explanation/working-with-agents.md
+{%- if include_sandbox %}
+      - The agent sandbox: explanation/sandbox.md
+{%- endif %}
   - How-to guides:
-      - Use the template: how-to/use-the-template.md
+      - Project tasks: how-to/project-tasks.md
+{%- if include_sandbox %}
+      - Run the sandbox: how-to/run-the-sandbox.md
+{%- endif %}
+{%- if sdd_framework != 'none' %}
+      - Spec-driven development: how-to/spec-driven-development.md
+{%- endif %}
   - Reference:
       - Tools: reference/tools.md
       - API: reference/{{ package_name }}.md
+{%- if include_sandbox %}
+      - Sandbox: reference/sandbox.md
+{%- endif %}
+  - Skills:
+      - Overview: skills/README.md
+      - /explore: skills/explore/SKILL.md
+      - /spec: skills/spec/SKILL.md
+      - /plan: skills/plan/SKILL.md
+      - /test: skills/test/SKILL.md
+      - /delegate: skills/delegate/SKILL.md
+      - /review: skills/review/SKILL.md
+      - /verify: skills/verify/SKILL.md
+      - /debug: skills/debug/SKILL.md
+      - /capture: skills/capture/SKILL.md
+  - Guidelines:
+      - Testing: guidelines/testing.md
+      - Documentation: guidelines/documentation.md
+      - Changelog standards: guidelines/changelog.md
   - Changelog: changelog.md
 
 markdown_extensions:

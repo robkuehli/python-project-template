@@ -1,0 +1,32 @@
+# Aider project configuration.
+#
+# Auth: never committed. Set the right env var in your shell:
+#   - LiteLLM   →  OPENAI_API_KEY=<your-litellm-token>
+#   - Ollama    →  (none required; the daemon runs locally)
+# See `.env.template` for the local-dev variant.
+
+model: {{ aider_model }}
+
+{%- if aider_provider == 'litellm' %}
+# LiteLLM gateway (OpenAI-compatible).
+openai-api-base: {{ litellm_base_url }}
+{%- else %}
+# Ollama (local). Aider talks to Ollama via the OpenAI-compatible endpoint.
+openai-api-base: {{ ollama_base_url }}/v1
+openai-api-key: ollama          # any non-empty value; Ollama ignores it
+{%- endif %}
+
+# Conventions / system prompt — single source of truth.
+read:
+  - AGENTS.md
+  - guidelines/testing.md
+  - guidelines/documentation.md
+  - guidelines/changelog.md
+
+# Quality-of-life defaults.
+auto-commits: false             # let the human decide what to commit
+dirty-commits: false
+attribute-author: false
+attribute-committer: false
+gitignore: true
+check-update: false

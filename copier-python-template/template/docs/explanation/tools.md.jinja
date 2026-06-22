@@ -2,7 +2,7 @@
 
 This page explains *why* the project is set up the way it is and how the tools fit
 together. It is understanding-oriented — for step-by-step instructions, see the
-[how-to guide](../how-to/use-the-template.md), and for a quick lookup table see the
+[how-to guide](../how-to/project-tasks.md), and for a quick lookup table see the
 [tools reference](../reference/tools.md).
 
 ## The big picture
@@ -71,6 +71,10 @@ and replaces the need for separate tools like isort/flake8/black.
 Runs in `strict` mode (`[tool.mypy]`) and verifies type hints across `src` and
 `tests`. Targets Python {{ python_version }}.
 
+> **mypy is the authoritative type checker.** Editor LSPs (Pyright, Pylance, …)
+> are welcome for inline hints, but only mypy's verdict gates the CI. If LSP
+> and mypy disagree, mypy wins — adjust the code, don't relax the gate.
+
 ### Pylint — deeper linting
 
 A second, more opinionated linter (`[tool.pylint]`) that catches design and
@@ -88,6 +92,12 @@ dependencies.
 Gitleaks scans for committed secrets; `detect-private-key` blocks key material;
 the `pre-commit-hooks` set fixes whitespace/EOLs and validates YAML/TOML and merge
 conflicts. Together they keep the repository clean and credential-free.
+
+### interrogate — docstring coverage
+
+Enforces a minimum docstring coverage on `src/` (`[tool.interrogate]`,
+threshold 80 %). Hooked into pre-commit so undocumented public functions block
+the commit. Tests and docs are excluded — they're not the contract.
 
 ### pytest — tests
 
@@ -115,6 +125,24 @@ for dependencies and Actions.
 ### Agent files, skills &amp; env
 
 `AGENTS.md` is the single source of truth for AI coding agents (read natively by
-Claude Code, Codex CLI, and Open Code). Reusable agent procedures live in
-`skills/` (SKILL.md format). Local secrets go in `.env` (git-ignored), copied from
-the tracked `.env.template`.
+Claude Code, Codex CLI, Aider, and OpenCode). Tool-specific config files
+(`.claude/`, `opencode.json`, `.aider.conf.yml`) only contain backend wiring —
+behaviour rules live exclusively in `AGENTS.md` and `guidelines/`.
+
+The Pareto skill set (`/explore`, `/spec`, `/plan`, `/test`, `/delegate`,
+`/review`, `/verify`, `/debug`, `/capture`) lives in `skills/` in the open
+[Agent Skills](https://agents.md) `SKILL.md` format. Each tool that supports
+skill discovery loads them on demand.
+
+Local secrets go in `.env` (git-ignored), copied from the tracked
+`.env.template`. The template's `.env.template` is rendered with the right
+hints for the backend(s) you selected (LiteLLM, Ollama, or subscription).
+{% if include_sandbox %}
+### The agent sandbox
+
+An optional Docker-Compose sandbox runs the agents in a container with only the
+repo mounted, so a hijacked agent can't reach host secrets. It is an additional
+layer on top of the permission system, not a replacement — and it deliberately
+does *not* block network egress. See [The agent sandbox](sandbox.md) for the
+isolation model and [Run the sandbox](../how-to/run-the-sandbox.md) for commands.
+{% endif %}

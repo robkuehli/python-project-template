@@ -1,0 +1,26 @@
+# Sandbox
+
+Containerised dev environment so coding agents can't reach the host filesystem
+or your shell's secrets. The repo is mounted at `/workspace`; everything else is
+ephemeral.
+
+## Quick start
+
+```bash
+just sandbox-build      # build the image (once)
+just sandbox-init       # generate missing secrets into .env (idempotent)
+just sandbox-up         # start supporting services
+just sandbox-shell      # drop into the sandbox shell
+just sandbox-down       # tear down
+```
+
+## Full docs
+
+The canonical documentation lives in the MkDocs site (`just docs` to serve it):
+
+- **Why & what it isolates** — [`docs/explanation/sandbox.md`](../docs/explanation/sandbox.md)
+- **How to run it** — [`docs/how-to/run-the-sandbox.md`](../docs/how-to/run-the-sandbox.md)
+- **Services, ports, env vars, limits** — [`docs/reference/sandbox.md`](../docs/reference/sandbox.md)
+
+This directory holds the build inputs: `agent/` (the agent container Dockerfile)
+and `searxng/` (SearXNG settings).

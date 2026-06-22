@@ -1,0 +1,49 @@
+# Minimal SearXNG settings for the sandbox.
+# Full reference: https://docs.searxng.org/admin/settings/index.html
+
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "sandbox-search"
+  contact_url: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  formats:
+    - html
+    - json
+
+server:
+  # Required by SearXNG. The official Docker image substitutes this placeholder
+  # with the value of $SEARXNG_SECRET at container start (see docker-compose.yml).
+  # Generate a random value for your shell .env: `openssl rand -hex 32`.
+  secret_key: "ultrasecretkey"
+  port: 8080
+  bind_address: "0.0.0.0"
+  base_url: false
+  image_proxy: false
+  http_protocol_version: "1.0"
+  method: "GET"
+  default_http_headers:
+    X-Content-Type-Options: nosniff
+    X-Download-Options: noopen
+    X-Robots-Tag: noindex, nofollow
+    Referrer-Policy: no-referrer
+
+ui:
+  static_use_hash: true
+
+# Enable a small set of trustworthy engines — extend as you need.
+engines:
+  - name: duckduckgo
+    disabled: false
+  - name: google
+    disabled: false
+  - name: wikipedia
+    disabled: false
+  - name: github
+    disabled: false
+  - name: stackoverflow
+    disabled: false

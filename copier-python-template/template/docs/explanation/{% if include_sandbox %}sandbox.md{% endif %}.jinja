@@ -1,0 +1,64 @@
+# The agent sandbox
+
+This page explains *why* the project ships a containerised sandbox and what it
+does — and does not — isolate. For the commands to run it, see the
+[how-to guide](../how-to/run-the-sandbox.md); for services, ports, and limits,
+see the [sandbox reference](../reference/sandbox.md).
+
+## Why a sandbox
+
+Coding agents run shell commands and edit files on your behalf. Run them
+directly on your machine and a hijacked or confused agent (OWASP ASI02 *Tool
+Misuse*) can read `~/.ssh`, `~/.aws`, your shell's `.env`, and any file you can.
+The sandbox is a containerised dev environment that constrains that blast
+radius: the repository is mounted at `/workspace`, and **nothing else from the
+host is visible**.
+
+It is an *additional* layer, not a replacement for the permission system in
+{% if 'claude_code' in coding_agents %}`.claude/settings.json`{% endif %}{% if 'claude_code' in coding_agents and 'opencode' in coding_agents %} / {% endif %}{% if 'opencode' in coding_agents %}`opencode.json`{% endif %}{% if not ('claude_code' in coding_agents or 'opencode' in coding_agents) %}your agent's config{% endif %}.
+Defence in depth: the permission rules constrain *what* the agent may do, the
+sandbox constrains *where* it can reach.
+
+## The isolation model
+
+What the agent shell can see:
+
+- ✅ **The repo**, mounted read-write at `/workspace` — the only writable host path.
+- ✅ **Explicitly forwarded env vars** — just the backend auth tokens you wired
+  up at generation time, listed in `docker-compose.yml`.
+
+What it cannot see:
+
+- ❌ Host filesystem outside the repo — `~/.ssh`, `~/.aws`, your shell `.env`,
+  and personal config are **never** mounted.
+- ❌ Other containers — the sandbox runs on its own dedicated Docker network.
+
+If the agent needs a new credential, you add it explicitly to
+`docker-compose.yml` and source it from your shell. Nothing is forwarded
+implicitly.
+
+## What the sandbox does *not* isolate
+
+The sandbox uses a standard Docker bridge network with **open egress**. This is
+deliberate — the agent must reach its LLM backend, fetch documentation, and
+install packages — but it means the sandbox is **not a network security
+boundary**:
+
+- The agent can reach any internet host **and** any host in your local network:
+  corporate intranets, RFC1918 ranges (`10.0.0.0/8`, `192.168.0.0/16`), internal
+  DNS, and cloud-metadata endpoints like `169.254.169.254`.
+
+On a developer laptop that is acceptable. **In a corporate network, add a
+host-level firewall rule** — the sandbox network is pinned to a fixed CIDR so you
+can target it (see the [how-to guide](../how-to/run-the-sandbox.md#restrict-network-egress)).
+For a true egress allowlist, put a proxy sidecar in front; that is out of scope
+for this template.
+
+## Why `--dangerously-skip-permissions` stays off
+
+Inside the container the permission system is still **off-limits by default**.
+The Docker mounts, resource caps, and read-only overlays are an additional layer,
+not a substitute. `--dangerously-skip-permissions` (and equivalents) deletes the
+permission layer and leaves only the sandbox — which, as above, does not block
+egress. Fully unattended runs belong on a dedicated, network-restricted host with
+explicit security sign-off, not on a daily-driver sandbox.

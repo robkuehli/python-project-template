@@ -1,0 +1,114 @@
+# Run the sandbox
+
+Task-focused recipes for the containerised agent sandbox. For *why* it exists
+and what it isolates, see [The agent sandbox](../explanation/sandbox.md); for
+services, ports, and env vars, see the [sandbox reference](../reference/sandbox.md).
+
+## Start a session
+
+```bash
+# 1. Build the image (once, plus after editing docker/agent/Dockerfile)
+just sandbox-build
+
+# 2. Start the supporting services (searxng{% if sandbox_observability != 'none' %} + {{ sandbox_observability }}{% endif %}) in the background
+just sandbox-up
+
+# 3. Drop into the sandbox shell — your agent CLIs are available inside
+just sandbox-shell
+#   inside the container:
+{%- if 'claude_code' in coding_agents %}
+#     claude          # start Claude Code
+{%- endif %}
+{%- if 'codex' in coding_agents %}
+#     codex           # start Codex CLI
+{%- endif %}
+{%- if 'aider' in coding_agents %}
+#     aider           # start Aider
+{%- endif %}
+{%- if 'opencode' in coding_agents %}
+#     opencode        # start OpenCode
+{%- endif %}
+#     just qa         # the quality gate runs identically here
+
+# 4. Tear everything down (containers + networks; volumes stay)
+just sandbox-down
+```
+
+`just sandbox-nuke` additionally removes the named volumes (caches, observability
+data) — destructive, use when you want a clean slate.
+
+## Populate the secrets in `.env`
+{% if sandbox_auto_init %}
+If `copier copy` ran with `--trust` and both `just` + `openssl` were on the PATH,
+`.env` was already populated with random hex values during generation. If any of
+those preconditions was missing, Copier printed a WARN and `.env` is unpopulated
+— run it once now:
+
+```bash
+just sandbox-init
+```
+
+`just sandbox-init` is idempotent — already-set variables are skipped — so it's
+safe to re-run to add a newly-introduced key. `.env` is git-ignored and never
+committed.
+{% else %}
+Generate the missing secrets before the first `just sandbox-up`:
+
+```bash
+just sandbox-init        # idempotent; skips keys already set
+```
+
+Or set them by hand, e.g. `echo "SEARXNG_SECRET=$(openssl rand -hex 32)" >> .env`.
+`.env` is git-ignored and never committed. See the
+[sandbox reference](../reference/sandbox.md#generated-secrets) for the full key list.
+{% endif %}
+
+## Forward a new environment variable
+
+The agent shell only sees the env vars declared in `docker-compose.yml`. To add
+one, declare it there explicitly and source it from your shell — **never**
+hard-code a secret into the compose file or the image.
+{%- if sandbox_observability == 'langfuse' %}
+
+## First boot of Langfuse
+
+`just sandbox-up` starts the Langfuse v3 stack at
+`http://localhost:${LANGFUSE_PORT:-3000}`.
+{% if sandbox_auto_init %}The auto-generated secrets are already in `.env` (or run `just sandbox-init`). Then:
+{% else %}Set the required secrets in `.env` first (the compose file fails loudly on `:?`
+guards if they're missing) — `just sandbox-init` generates them. Then:
+{% endif %}
+1. Open the UI and create an org + project.
+2. Copy `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from the project settings
+   into `.env` — these are created after first login and cannot be auto-generated.
+3. Restart so the new vars are forwarded: `just sandbox-down && just sandbox-up`.
+{%- elif sandbox_observability == 'mlflow' %}
+
+## Use MLflow
+
+`just sandbox-up` starts an MLflow tracking server at
+`http://localhost:${MLFLOW_PORT:-5000}`. Point your code at
+`$MLFLOW_TRACKING_URI` (already forwarded into the sandbox shell) to log runs.
+No first-login step is needed.
+{%- endif %}
+
+## Restrict network egress
+
+The sandbox does not block outbound traffic (see
+[the explanation](../explanation/sandbox.md#what-the-sandbox-does-not-isolate)).
+On a corporate network, block egress from the sandbox CIDR (`172.28.0.0/16`) to
+internal ranges:
+
+```bash
+# Linux (iptables)
+sudo iptables -I DOCKER-USER -s 172.28.0.0/16 \
+  -d 10.0.0.0/8,192.168.0.0/16,172.16.0.0/12 -j REJECT
+sudo iptables -I DOCKER-USER -s 172.28.0.0/16 \
+  -d 169.254.169.254/32 -j REJECT
+```
+
+```pf
+# macOS (pf.conf)
+block out quick from 172.28.0.0/16 to <rfc1918>
+block out quick from 172.28.0.0/16 to 169.254.169.254
+```

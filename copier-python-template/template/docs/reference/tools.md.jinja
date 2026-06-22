@@ -4,6 +4,8 @@ Lookup table for every tool in this project: what it does, where it is configure
 and how it runs. For the reasoning behind the stack, see
 [Tools &amp; architecture](../explanation/tools.md).
 
+## Engineering stack
+
 | Tool | Purpose | Configured in | Runs via |
 | --- | --- | --- | --- |
 | `uv` | Python {{ python_version }} interpreter, venv, dependencies | `pyproject.toml` (`[project]`, `[dependency-groups]`), `uv.lock` | `just install`, `uv sync`, `uv run` |
@@ -16,9 +18,48 @@ and how it runs. For the reasoning behind the stack, see
 | `Bandit` | Security linting | `[tool.bandit]` | pre-commit (`bandit`) |
 | `Gitleaks` | Secret scanning | `.gitleaks.toml` (optional) | pre-commit (`gitleaks`) |
 | `pre-commit-hooks` | Whitespace, EOL, YAML/TOML, keys, conflicts | built-in | pre-commit |
-| `pytest` | Test runner (+ `pytest-sugar`) | `[tool.pytest.ini_options]` | pre-commit (local), `just test` |
+| `interrogate` | Docstring coverage (fail-under 80 %) | `[tool.interrogate]` | pre-commit (local) |
+| `pytest` | Test runner (+ `pytest-sugar`) | `[tool.pytest.ini_options]` | `just test`, CI only (not pre-commit) |
 | `coverage` | Test coverage (`pytest-cov`) | `[tool.coverage]` | `just cov` |
 {% if include_sql %}| `sqlfluff` | SQL linter/formatter (dialect `{{ sql_dialect }}`) | `[tool.sqlfluff]` | pre-commit (`sqlfluff-lint`) |
 {% endif %}| `MkDocs` | Documentation site (Material + mkdocstrings) | `mkdocs.yml` | `just docs`, Docs workflow |
 | `GitHub Actions` | CI + docs deploy | `.github/workflows/` | push / pull request |
 | `Dependabot` | Weekly dependency &amp; Action updates | `.github/dependabot.yml` | scheduled |
+
+## AI coding agents
+
+Behaviour for every agent comes from `AGENTS.md` and `guidelines/*.md` — the
+single source of truth. The files below only carry tool-specific wiring
+(backend URL, model alias, hooks).
+
+| Agent | Configured in | Backend | Auth |
+| --- | --- | --- | --- |
+{%- if 'claude_code' in coding_agents %}
+| `Claude Code` | `.claude/settings.json`, `CLAUDE.md`, `AGENTS.md` | {% if claude_provider == 'litellm' %}LiteLLM gateway (`{{ litellm_base_url }}`){% else %}Claude subscription{% endif %} | {% if claude_provider == 'litellm' %}`ANTHROPIC_AUTH_TOKEN` in shell{% else %}`/login`{% endif %} |
+{%- endif %}
+{%- if 'codex' in coding_agents %}
+| `Codex CLI` | `.codex/config.toml`, `AGENTS.md` | {% if codex_provider == 'litellm' %}LiteLLM gateway (`{{ litellm_base_url }}`){% else %}ChatGPT subscription{% endif %} | {% if codex_provider == 'litellm' %}`OPENAI_API_KEY` + `OPENAI_BASE_URL` in shell{% else %}`codex login`{% endif %} |
+{%- endif %}
+{%- if 'aider' in coding_agents %}
+| `Aider` | `.aider.conf.yml`, `AGENTS.md` | {% if aider_provider == 'litellm' %}LiteLLM gateway (`{{ litellm_base_url }}`){% else %}Ollama (`{{ ollama_base_url }}`){% endif %} | {% if aider_provider == 'litellm' %}`OPENAI_API_KEY` in shell{% else %}none (local){% endif %} |
+{%- endif %}
+{%- if 'opencode' in coding_agents %}
+{%- set tier = ollama_tier | default('local', true) %}
+| `OpenCode` | `opencode.json`, `AGENTS.md` | Ollama daemon (`{{ ollama_base_url }}`), tier = **{{ tier }}** | {% if ollama_subscription %}`ollama signin` for `:cloud` tags{% else %}none (local only){% endif %} |
+{%- endif %}
+
+## Workflow skills
+
+Tool-agnostic procedures in `skills/`, loaded on demand:
+
+| Skill | Trigger | Output |
+| --- | --- | --- |
+| `/explore` | Understand a codebase area | Relevant files, patterns, open questions |
+| `/spec` | Define a feature | Requirements, acceptance criteria, edge cases, out-of-scope |
+| `/plan` | Structure an implementation | Ordered steps with dependencies + verification |
+| `/test` | Derive tests from spec | Pytest functions per acceptance criterion |
+| `/delegate` | Hand off to an autonomous agent | Self-contained brief: spec + plan + tests + constraints |
+| `/review` | Independent review of a change | Findings by severity, ship/fix-then-ship/needs-rework verdict |
+| `/verify` | Prove the change works on the current diff | Fresh evidence (command + output) mapped to acceptance criteria |
+| `/debug` | Find a root cause | Repro, hypotheses, root cause, fix + regression test |
+| `/capture` | Save a learning | One-line dated rule with *why* |

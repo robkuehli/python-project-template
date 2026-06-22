@@ -1,0 +1,60 @@
+# Summary
+
+<!-- One or two sentences. What changes and why. -->
+
+## Type of change
+
+<!-- Pick what applies; remove the rest. -->
+
+- [ ] Feature
+- [ ] Bug fix
+- [ ] Refactor
+- [ ] Docs
+- [ ] CI / tooling
+
+## How to verify
+
+```bash
+just install
+just qa
+```
+
+<!-- Add steps the reviewer needs to reproduce or check this beyond `just qa`. -->
+
+## Risks / rollback
+
+<!-- Known risks, how to roll back if this breaks something. -->
+
+---
+{%- if coding_agents %}
+
+## Agent run (OPTIONAL — only fill in if this branch was produced by a coding agent; delete the section otherwise)
+
+<!-- Created by `just agent-checkpoint` before the agent started. -->
+<!-- DELETE this whole section for human-only PRs. -->
+
+**Pre-agent checkpoint:**  `pre-agent-YYYYMMDD-HHMMSS` (`<commit-sha>`)
+
+**Task context (link to spec / brief):**
+<!-- Path or link to the spec / brief / prompt the agent worked from. -->
+
+**Agent / model:**
+<!-- e.g. OpenCode + ollama/qwen3-coder:30b ; Claude Code (Plan Mode → Default) ; Aider + claude-sonnet-4-6. -->
+
+**Test report:**
+
+```text
+<!-- Paste the tail of the verify-gate output (just qa). -->
+```
+
+**Diff scope:**
+- Files touched: <!-- N -->
+- Lines added / removed: <!-- +X / -Y -->
+- Out-of-scope edits flagged: <!-- yes/no — explain if yes -->
+
+**Decisions made during the run** (link to `DECISIONS.md` on the branch if present):
+- <!-- e.g. picked SQLAlchemy 2.x style queries (constitution allows both) -->
+
+**Debug hypotheses still open** (link to `DEBUG_HYPOTHESES.md` if present):
+- <!-- e.g. flaky integration test under high load — not reproduced yet -->
+{%- endif %}

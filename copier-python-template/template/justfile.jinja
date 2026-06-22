@@ -1,0 +1,125 @@
+# Task runner — run `just` (or `just --list`) to see all recipes.
+# https://github.com/casey/just
+
+set shell := ["bash", "-cu"]
+
+# Show available recipes
+default:
+    @just --list
+
+# Create the venv, install all deps and the git hooks
+install:
+    uv sync
+    uv run pre-commit install
+
+# Sync the environment from the lockfile
+sync:
+    uv sync
+
+# Full quality gate (this is what CI runs)
+qa: lint typecheck test
+
+# Run all pre-commit hooks across the whole repo
+lint:
+    uv run pre-commit run --all-files
+
+# Auto-format and auto-fix
+format:
+    uv run ruff format .
+    uv run ruff check --fix .
+
+# Static type checking
+typecheck:
+    uv run mypy .
+
+# Run the test suite (e.g. `just test tests/test_smoke.py`)
+{% raw %}test *args:
+    uv run pytest {{ args }}{% endraw %}
+
+# Run tests with a coverage report
+cov:
+    uv run pytest --cov --cov-report=term-missing
+
+# Serve the docs locally with live reload
+docs:
+    uv run mkdocs serve
+
+# Build the static docs site (fails on warnings)
+docs-build:
+    uv run mkdocs build --strict
+
+# Pull the latest changes from the Copier template into this project
+update:
+    uv run copier update --trust --skip-answered
+
+# Remove caches and build artifacts
+clean:
+    rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov site dist build .coverage
+    find . -type d -name __pycache__ -exec rm -rf {} +
+
+# Create a pre-agent checkpoint tag (use before letting an agent run autonomously)
+agent-checkpoint:
+    @git diff --quiet HEAD || { echo "Uncommitted changes — commit (or stash) first; the checkpoint tags HEAD."; exit 1; }
+    @ts=$(date +%Y%m%d-%H%M%S); \
+     git tag "pre-agent-$ts" && \
+     echo "Tagged pre-agent-$ts on $(git rev-parse --short HEAD)"
+{%- if include_sandbox %}
+
+# --- Sandbox (Docker-Compose) ----------------------------------------------
+
+# Build (or rebuild) the agent sandbox image
+sandbox-build:
+    docker compose build agent
+
+# Generate any missing sandbox secrets into .env — idempotent, safe to re-run
+sandbox-init:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "==> sandbox-init: checking .env for missing secrets …"
+    if ! command -v openssl >/dev/null 2>&1; then
+        echo "ERROR: openssl not found on PATH. Required for secret generation." >&2
+        echo "  Install via your package manager (e.g. 'apt install openssl' / 'brew install openssl')," >&2
+        echo "  or set the secrets manually in .env — see docker/README.md." >&2
+        exit 1
+    fi
+    touch .env
+    _gen() {
+        local key=$1 len=${2:-32}
+        if ! grep -qE "^${key}=.+" .env 2>/dev/null; then
+            printf '%s=%s\n' "$key" "$(openssl rand -hex $len)" >> .env
+            echo "  + ${key} (generated)"
+        else
+            echo "  ~ ${key} (already set)"
+        fi
+    }
+    _gen SEARXNG_SECRET
+{% if include_crawl4ai %}
+    _gen CRAWL4AI_API_TOKEN
+{% endif %}
+{% if sandbox_observability == 'langfuse' %}
+    _gen LANGFUSE_ENCRYPTION_KEY
+    _gen LANGFUSE_NEXTAUTH_SECRET
+    _gen LANGFUSE_SALT
+    _gen LANGFUSE_DB_PASSWORD 16
+    _gen LANGFUSE_CLICKHOUSE_PASSWORD 16
+    _gen LANGFUSE_REDIS_AUTH 16
+    _gen LANGFUSE_MINIO_ROOT_PASSWORD 16
+{% endif %}
+    echo "Done — secrets written to .env (never committed, already in .gitignore)"
+
+# Start supporting services (searxng{% if sandbox_observability != 'none' %} + {{ sandbox_observability }}{% endif %}) in the background
+sandbox-up:{% if sandbox_auto_init %} sandbox-init{% endif %}
+    docker compose --profile dev{% if sandbox_observability != 'none' %} --profile trace{% endif %} up -d
+
+# Drop into an interactive shell inside the agent container
+sandbox-shell:
+    docker compose --profile dev run --rm agent bash
+
+# Tear everything down (containers + networks; volumes stay)
+sandbox-down:
+    docker compose --profile dev{% if sandbox_observability != 'none' %} --profile trace{% endif %} down
+
+# Remove sandbox volumes too (caches, observability data) — destructive
+sandbox-nuke:
+    docker compose --profile dev{% if sandbox_observability != 'none' %} --profile trace{% endif %} down -v
+{%- endif %}

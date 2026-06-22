@@ -1,0 +1,1 @@
+--8<-- "guidelines/testing.md"

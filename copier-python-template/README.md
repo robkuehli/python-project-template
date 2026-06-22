@@ -3,58 +3,66 @@
 A reusable [Copier](https://copier.readthedocs.io) template for standard Python
 projects, wired up with **uv**, **just**, **pre-commit**, and **MkDocs**.
 
+📖 **Full documentation:** <https://robkuehli.github.io/python-project-template/>
+
 ## What you get
 
 Generating a project produces:
 
 - **uv** for dependencies/environments, with `[dependency-groups]` (`dev`, `docs`)
-  and a `.python-version` (default 3.13; 3.12–3.15 selectable).
+  and a pinned `.python-version` (3.12 / 3.13).
 - **just** task runner (`install`, `qa`, `lint`, `format`, `typecheck`, `test`,
   `cov`, `docs`, `update`, `clean`).
 - **pre-commit** with the full hook set: pre-commit-hooks hygiene, Ruff
   (lint + format), Bandit, Gitleaks, and local mypy / pylint / sqlfluff / pytest.
-  All tool configs live in `pyproject.toml`, which the hooks read.
-- **MkDocs** (Material) with **mkdocstrings** API docs and a changelog page.
-  Content is split along [Diátaxis](https://diataxis.fr/): an *explanation*
-  page (the tools and how just/Copier fit together) and a *how-to* page
-  (using the template), alongside the API *reference*.
+- **MkDocs** (Material) with **mkdocstrings** API docs, organised along
+  [Diátaxis](https://diataxis.fr/).
 - **GitHub Actions**: `ci.yml` (uv + pre-commit + pytest) and `docs.yml`
   (MkDocs → GitHub Pages), plus **Dependabot**.
-- Agent setup: a root **`AGENTS.md`** (read by Claude Code and Codex CLI),
-  optional `.claude/`, `.opencode/` (+ `opencode.json`), and Copilot files.
-- A **`guidelines/`** folder (changelog / testing / documentation standards) and
-  a **`skills/`** folder using the `SKILL.md` format.
-- Project hygiene: `CHANGELOG.md` (Keep a Changelog), `CONTRIBUTING.md`,
-  `CODE_OF_CONDUCT.md`, `.editorconfig`, `.gitignore`, `py.typed`, `.env` + `.env.template`.
+- Agent setup: a root **`AGENTS.md`** (read by Claude Code, Codex CLI, Aider and
+  OpenCode), plus optional `.claude/`, `.opencode/` (+ `opencode.json`), and
+  `.aider.conf.yml`. Backend per tool: subscription / LiteLLM gateway / Ollama.
+- A **`guidelines/`** folder and a **`skills/`** folder with the 9 workflow
+  skills (`/explore`, `/spec`, `/plan`, `/test`, `/delegate`, `/review`,
+  `/verify`, `/debug`, `/capture`).
+- An optional **Docker-Compose sandbox** (isolated container, optional SearXNG,
+  Crawl4AI, MLflow/Langfuse observability).
+- Project hygiene: `CHANGELOG.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
+  `.editorconfig`, `.gitignore`, `py.typed`, `.env` + `.env.template`.
 
-## Usage
+## Quickstart
+
+Requires **`uv`** on the PATH and a **Unix-like shell** (macOS, Linux, or
+WSL2 + Developer Mode). `--trust` lets the post-generation tasks (`git init`,
+`uv sync`, `uv run pre-commit install`) run.
 
 ```bash
 uv tool install copier
-# generate (use --trust to also run git init + uv sync + pre-commit install)
-copier copy --trust gh:your-username/copier-python-template path/to/new-project
+copier copy --trust gh:robkuehli/python-project-template path/to/new-project
 ```
 
-Answer the prompts (project name, package name, author, Python version, which
-coding agents, whether to include SQL tooling, license).
+See the docs for details:
 
-## Updating downstream projects
+- **[Getting started](https://robkuehli.github.io/python-project-template/getting-started/)**
+  — prerequisites and generating a project.
+- **[Options reference](https://robkuehli.github.io/python-project-template/options/)**
+  — every prompt, choice, and default.
+- **[Example setups](https://robkuehli.github.io/python-project-template/examples/)**
+  — three concrete answer combinations.
+- **[Updating projects](https://robkuehli.github.io/python-project-template/updating/)**
+  — pulling template changes downstream.
+- **[Developing the template](https://robkuehli.github.io/python-project-template/developing/)**
+  — repo layout and the render smoketest.
 
-When you improve this template, pull the changes into a generated project:
+## Documentation layout
 
-```bash
-cd path/to/new-project
-copier update --trust --skip-answered   # or: just update
-```
+This repo carries **two** doc sets, kept apart by the `_subdirectory: "template"`
+boundary in `copier.yml`:
 
-## Notes & decisions
+- `copier-python-template/docs/` — docs for the **template** (this README's site).
+  Never copied into generated projects.
+- `template/docs/` — the MkDocs site that ships **inside every generated
+  project**, documenting that project's own workflow.
 
-- **Python version** is consistent everywhere (pre-commit
-  `default_language_version`, `.python-version`, mypy/ruff/pylint targets, CI).
-- **sqlfluff** requires a `dialect`; it is set in `pyproject.toml`
-  (`ansi` by default). If you don't use SQL, answer "no" to `include_sql`.
-- **License** defaults to `Proprietary` (no LICENSE file is written, and a
-  `Private :: Do Not Upload` classifier is added). Choose MIT/Apache-2.0 to
-  emit an SPDX license field.
-- Ruff and pylint overlap by design; duplicate rules are disabled in pylint to
-  keep the output quiet.
+Rule of thumb when adding docs: *does it describe the template, or the product
+built from it?*

@@ -1,0 +1,325 @@
+# Sandbox stack — see docker/README.md for usage.
+#
+# Profiles:
+#   dev     — agent shell + searxng (default for `just sandbox-up`)
+#   trace   — observability ({{ sandbox_observability }})
+#
+# The repo is mounted into /workspace; the host is otherwise isolated.
+
+services:
+  agent:
+    build:
+      context: ./docker/agent
+      args:
+        PYTHON_VERSION: "{{ python_version }}"
+    image: {{ project_slug }}-agent:latest
+    volumes:
+      - .:/workspace:rw
+      # --- OWASP ASI06 hardening: read-only overlays on trust-sensitive paths.
+      # The agent's permission system (`shared_deny_write` in copier.yml →
+      # `.claude/settings.json`) blocks Tool-level Write/Edit, but does NOT
+      # block (a) hook scripts running as the OS user, (b) the agent invoking
+      # an external binary via Bash, or (c) anyone bypassing the system with
+      # `--dangerously-skip-permissions`. These ro-mounts catch all three at
+      # the kernel level.
+      #
+      # Paths kept *writable* by design:
+      #   - `.claude/LEARNINGS.md` + `.claude/LEARNINGS.inbox.md`
+      #     (capture-learnings.sh and /capture review write here)
+      #   - `pyproject.toml` (uv add/remove modify it; covered by the
+      #     tool-layer deny only — accepts the residual risk)
+      - ./AGENTS.md:/workspace/AGENTS.md:ro
+      - ./justfile:/workspace/justfile:ro
+      - ./.pre-commit-config.yaml:/workspace/.pre-commit-config.yaml:ro
+      - ./.gitleaks.toml:/workspace/.gitleaks.toml:ro
+      - ./.github:/workspace/.github:ro
+      - ./docker:/workspace/docker:ro
+      - ./docker-compose.yml:/workspace/docker-compose.yml:ro
+{%- if 'claude_code' in coding_agents %}
+      - ./CLAUDE.md:/workspace/CLAUDE.md:ro
+      - ./.claude/settings.json:/workspace/.claude/settings.json:ro
+      - ./.claude/agents:/workspace/.claude/agents:ro
+      - ./.claude/hooks:/workspace/.claude/hooks:ro
+      - ./.claude/commands:/workspace/.claude/commands:ro
+      - ./.claude/scripts:/workspace/.claude/scripts:ro
+{%- endif %}
+{%- if 'codex' in coding_agents %}
+      - ./.codex:/workspace/.codex:ro
+{%- endif %}
+{%- if 'opencode' in coding_agents %}
+      - ./opencode.json:/workspace/opencode.json:ro
+      - ./.opencode:/workspace/.opencode:ro
+{%- endif %}
+{%- if 'aider' in coding_agents %}
+      - ./.aider.conf.yml:/workspace/.aider.conf.yml:ro
+{%- endif %}
+      # ---
+      - agent-cache:/home/agent/.cache
+      - agent-uv:/home/agent/.local/share/uv
+    working_dir: /workspace
+    environment:
+      # Auth tokens are read from the *shell* and forwarded — never baked into the image.
+{%- if 'claude_code' in coding_agents and claude_provider == 'litellm' %}
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-{{ litellm_base_url }}}
+{%- endif %}
+{%- if ('codex' in coding_agents and codex_provider == 'litellm')
+    or ('aider' in coding_agents and aider_provider == 'litellm') %}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-{{ litellm_base_url }}}
+{%- endif %}
+{%- if 'opencode' in coding_agents
+    or ('aider' in coding_agents and aider_provider == 'ollama') %}
+      # Ollama on the host is reachable via host.docker.internal on macOS/Windows.
+      # On Linux, set OLLAMA_HOST=http://host.docker.internal:11434 in your shell
+      # (or use the `host` network mode) before running this stack.
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+{%- endif %}
+{%- if 'opencode' in coding_agents and ollama_subscription %}
+      # Forwarded so OpenCode can call `:cloud`-tagged models through the daemon.
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-}
+{%- endif %}
+      - SEARXNG_URL=http://searxng:8080
+{%- if include_crawl4ai %}
+      - CRAWL4AI_URL=http://crawl4ai:11235
+      - CRAWL4AI_API_TOKEN=${CRAWL4AI_API_TOKEN:-}
+{%- endif %}
+{%- if sandbox_observability == 'langfuse' %}
+      - LANGFUSE_HOST=http://langfuse:3000
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
+{%- elif sandbox_observability == 'mlflow' %}
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+{%- endif %}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [sandbox]
+    profiles: [dev]
+{%- if include_crawl4ai %}
+    # Wait for Chromium to be ready before the agent shell starts — otherwise the first
+    # $CRAWL4AI_URL call races the sidecar boot and returns 502.
+    depends_on:
+      crawl4ai:
+        condition: service_healthy
+{%- endif %}
+    # Resource caps — adjust to your host. CPUs ≈ 70% of host P-cores avoids thermal throttling.
+    deploy:
+      resources:
+        limits:
+          cpus: "${SANDBOX_CPUS:-2.8}"
+          memory: "${SANDBOX_MEM:-6g}"
+    tmpfs:
+      - /tmp:size=512m
+    # `docker compose run --rm agent` → interactive shell. `up` keeps it idling.
+    command: ["sleep", "infinity"]
+    stdin_open: true
+    tty: true
+
+  searxng:
+    # SearXNG uses date-tagged releases (YYYY.M.D-<short-sha>). Pin deliberately;
+    # `latest` floats and breaks reproducibility. Bump by checking
+    # https://hub.docker.com/r/searxng/searxng/tags.
+    image: searxng/searxng:2026.6.11-a1490676e
+    volumes:
+      - ./docker/searxng:/etc/searxng:ro
+    environment:
+      # Required: the entrypoint substitutes the placeholder in settings.yml.
+      # `:?` makes `docker compose up` fail loudly if the var is unset.
+      - SEARXNG_SECRET=${SEARXNG_SECRET:?Set SEARXNG_SECRET in your shell or .env (openssl rand -hex 32)}
+    networks: [sandbox]
+    profiles: [dev]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+{%- if include_crawl4ai %}
+
+  crawl4ai:
+    # Playwright + Chromium under the hood — first pull is ~1.4 GB on v0.8.
+    # Pinned: the REST schema changed between 0.5 → 0.7; bump deliberately.
+    # v0.8.x line is stable for headless markdown fetches; v0.9 is unreleased.
+    image: unclecode/crawl4ai:0.8.9
+    environment:
+      # `:?` fails fast if the token is unset. Generate once: `openssl rand -hex 32`.
+      - CRAWL4AI_API_TOKEN=${CRAWL4AI_API_TOKEN:?Set CRAWL4AI_API_TOKEN in your shell or .env (openssl rand -hex 32)}
+    networks: [sandbox]
+    profiles: [dev]
+    restart: unless-stopped
+    # Chromium is hungry — bump SANDBOX_MEM accordingly on small hosts.
+    deploy:
+      resources:
+        limits:
+          cpus: "${CRAWL4AI_CPUS:-1.5}"
+          memory: "${CRAWL4AI_MEM:-2g}"
+    # Crawl4AI's Playwright pool needs more than the default 64 MB.
+    shm_size: "1gb"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:11235/health"]
+      # Tighter interval than the SearXNG check — `depends_on: service_healthy`
+      # gates the agent shell, so we want a healthy boot detected fast.
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      # Chromium + Playwright bootstrap takes 10–30 s on first run.
+      start_period: 30s
+{%- endif %}
+{%- if sandbox_observability == 'langfuse' %}
+
+  # --- Langfuse v3 stack ----------------------------------------------------
+  # v3 split the v2 single-container into web + async-worker and added three
+  # backing services. Sandbox-only — for production, follow
+  # https://langfuse.com/self-hosting.
+  langfuse-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: ${LANGFUSE_DB_PASSWORD:-langfuse}
+    volumes:
+      - langfuse-db:/var/lib/postgresql/data
+    networks: [sandbox]
+    profiles: [trace]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:-clickhouse}
+    volumes:
+      - langfuse-clickhouse-data:/var/lib/clickhouse
+      - langfuse-clickhouse-logs:/var/log/clickhouse-server
+    networks: [sandbox]
+    profiles: [trace]
+    restart: unless-stopped
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  langfuse-redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${LANGFUSE_REDIS_AUTH:-redis}"]
+    networks: [sandbox]
+    profiles: [trace]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "${LANGFUSE_REDIS_AUTH:-redis}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  langfuse-minio:
+    # MinIO uses RELEASE.YYYY-MM-DDTHH-MM-SSZ tags. Bump by checking
+    # https://hub.docker.com/r/minio/minio/tags.
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: ["server", "--address", ":9000", "--console-address", ":9001", "/data"]
+    environment:
+      MINIO_ROOT_USER: ${LANGFUSE_MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${LANGFUSE_MINIO_ROOT_PASSWORD:-miniosecret}
+    volumes:
+      - langfuse-minio-data:/data
+    networks: [sandbox]
+    profiles: [trace]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    depends_on:
+      langfuse-db: { condition: service_healthy }
+      langfuse-clickhouse: { condition: service_healthy }
+      langfuse-redis: { condition: service_healthy }
+      langfuse-minio: { condition: service_healthy }
+    environment: &langfuse-env
+      DATABASE_URL: postgresql://langfuse:${LANGFUSE_DB_PASSWORD:-langfuse}@langfuse-db:5432/langfuse
+      SALT: ${LANGFUSE_SALT:-change-me-in-production}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:?Set LANGFUSE_ENCRYPTION_KEY in your shell or .env (openssl rand -hex 32)}
+      TELEMETRY_ENABLED: "false"
+      CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${LANGFUSE_CLICKHOUSE_PASSWORD:-clickhouse}
+      REDIS_CONNECTION_STRING: redis://default:${LANGFUSE_REDIS_AUTH:-redis}@langfuse-redis:6379
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LANGFUSE_MINIO_ROOT_USER:-minio}
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LANGFUSE_MINIO_ROOT_PASSWORD:-miniosecret}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+    networks: [sandbox]
+    profiles: [trace]
+    restart: unless-stopped
+
+  langfuse:
+    image: langfuse/langfuse:3
+    depends_on:
+      langfuse-db: { condition: service_healthy }
+      langfuse-clickhouse: { condition: service_healthy }
+      langfuse-redis: { condition: service_healthy }
+      langfuse-minio: { condition: service_healthy }
+    environment:
+      <<: *langfuse-env
+      NEXTAUTH_URL: ${LANGFUSE_NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:?Set LANGFUSE_NEXTAUTH_SECRET in your shell or .env (openssl rand -hex 32)}
+    ports:
+      - "${LANGFUSE_PORT:-3000}:3000"
+    networks: [sandbox]
+    profiles: [trace]
+    restart: unless-stopped
+{%- elif sandbox_observability == 'mlflow' %}
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.10.0
+    command: >-
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    networks: [sandbox]
+    profiles: [trace]
+    restart: unless-stopped
+{%- endif %}
+
+volumes:
+  agent-cache:
+  agent-uv:
+{%- if sandbox_observability == 'langfuse' %}
+  langfuse-db:
+  langfuse-clickhouse-data:
+  langfuse-clickhouse-logs:
+  langfuse-minio-data:
+{%- elif sandbox_observability == 'mlflow' %}
+  mlflow-data:
+{%- endif %}
+
+networks:
+  sandbox:
+    driver: bridge
+    # Subnet pinned so host-level firewall rules can target this sandbox
+    # specifically (e.g. block egress from 172.28.0.0/16 to RFC1918 ranges
+    # on the host). Pinning alone gives no isolation — see docker/README.md
+    # "Network egress — what this does and doesn't isolate".
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

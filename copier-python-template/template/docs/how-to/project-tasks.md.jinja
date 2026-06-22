@@ -1,0 +1,95 @@
+# Project tasks
+
+Task-focused recipes for working on this project day to day. For the reasoning
+behind the tools, see [Tools &amp; architecture](../explanation/tools.md). This
+project was generated from a Copier template; for how the template itself works
+(prompts, options, generating fresh projects) see the template's own docs.
+
+## Update this project from the template
+
+When the template improves, pull the changes in:
+
+```bash
+just update        # = copier update --trust --skip-answered
+```
+
+Review the diff, resolve any conflicts, then commit.
+
+## Pick a license
+
+The `license` prompt drives what ends up in `pyproject.toml`:
+
+- **Proprietary** (default) — no `LICENSE` file is written and a
+  `Private :: Do Not Upload` classifier is added, so an accidental
+  `uv publish` / `twine upload` to PyPI is rejected. Use this for closed projects.
+- **MIT** / **Apache-2.0** — emits the matching SPDX license field; add the
+  corresponding `LICENSE` file yourself.
+
+Changing it later means re-running `just update` and re-answering the prompt, or
+editing the `[project]` license field and classifiers by hand.
+
+## Run the day-to-day commands
+
+```bash
+just install     # create the venv, install deps + git hooks
+just qa          # full gate: lint + type-check + tests
+just test        # tests only (add a path: just test tests/test_smoke.py)
+just format      # auto-format and auto-fix
+just typecheck   # mypy
+just docs        # serve the docs locally with live reload
+just             # list every recipe
+```
+
+## Add or remove a dependency
+
+```bash
+uv add httpx                      # runtime dependency
+uv add --group dev pytest-mock    # dev tooling
+uv add --group docs mkdocs-glightbox  # docs tooling
+uv remove httpx
+```
+
+`uv` updates `pyproject.toml` and `uv.lock` — commit both.
+
+## Change the Python version
+
+The template's `python_version` prompt currently offers **3.12** and **3.13** only.
+Ruff, mypy, and pylint each lag a few months behind upstream Python when it comes
+to landing `target-version`/`py-version` flags, so newer releases (3.14+) are
+intentionally not yet selectable — pick them only after the next template bump
+once the linter stack has caught up.
+
+The version is pinned in several coordinated places, so the cleanest path is to
+let Copier re-apply it consistently:
+
+```bash
+just update        # re-answer the "Python version" prompt
+```
+
+If you change it by hand instead, update all of: `.python-version`,
+`requires-python` and `target-version` in `pyproject.toml`, `[tool.mypy]`
+`python_version`, `[tool.pylint.main]` `py-version`, and
+`default_language_version` in `.pre-commit-config.yaml`.
+
+## Manage environment variables
+
+```bash
+cp .env.template .env   # then fill in real values
+```
+
+`.env` is git-ignored; never commit it. Document new variables in `.env.template`.
+
+## Add a skill or agent guidance
+
+- Add a reusable agent skill: create `skills/<name>/SKILL.md` with `name` and
+  `description` frontmatter, then the instructions.
+- Change project-wide agent behavior: edit `AGENTS.md`.
+
+## Build and publish the docs
+
+```bash
+just docs-build    # build the static site into ./site (fails on warnings)
+```
+
+Pushing to `main` triggers the `Docs` workflow, which runs `mkdocs gh-deploy` and
+publishes to GitHub Pages.

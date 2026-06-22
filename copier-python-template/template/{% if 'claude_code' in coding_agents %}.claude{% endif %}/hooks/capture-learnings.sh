@@ -25,6 +25,12 @@ CWD=$(printf '%s' "$PAYLOAD" | jq -r '.cwd // empty')
 # Nichts zu tun, wenn kein Transkript vorliegt oder die Inbox fehlt.
 { [ -z "${TRANSCRIPT:-}" ] || [ ! -f "$TRANSCRIPT" ]; } && exit 0
 [ -f "$INBOX" ] || exit 0
+
+# Skip kurze Sessions — extra `claude -p` call lohnt erst ab substantiellem Transkript.
+MIN_BYTES="${CLAUDE_LEARNINGS_MIN_BYTES:-8192}"
+SIZE=$(wc -c < "$TRANSCRIPT" 2>/dev/null || echo 0)
+[ "${SIZE:-0}" -lt "$MIN_BYTES" ] && exit 0
+
 PROJECT=$(basename "${CWD:-$PROJECT_DIR}")
 TODAY=$(date +%F)
 

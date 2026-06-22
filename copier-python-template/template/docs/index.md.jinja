@@ -16,14 +16,44 @@ just qa
 
 ## Documentation
 
-These docs are organized along the [Diátaxis](https://diataxis.fr/) framework:
+These docs are organized along the [Diátaxis](https://diataxis.fr/) framework.
 
-- [Tools &amp; architecture](explanation/tools.md) — *explanation*: what each tool
-  does and how uv, just, pre-commit, and Copier fit together.
-- [Use the template](how-to/use-the-template.md) — *how-to*: generate, update, and
-  work with the project day to day.
-- [API Reference](reference/{{ package_name }}.md) — *reference*: generated from
-  docstrings.
-- [Tools reference](reference/tools.md) — *reference*: lookup table of every tool,
-  its config, and how it runs.
-- [Changelog](changelog.md).
+**Explanation** — understanding-oriented:
+
+- [Tools &amp; architecture](explanation/tools.md) — what each tool does and how uv,
+  just, pre-commit, and Copier fit together.
+- [Developer workflow](explanation/developer-workflow.md) — how the skills, quality
+  gate, and agent loop compose into a day-to-day workflow.
+- [Working with agents](explanation/working-with-agents.md) — the agent setup,
+  guardrails, and how the tool configs relate to `AGENTS.md`.
+
+**How-to guides** — task-oriented:
+
+- [Project tasks](how-to/project-tasks.md) — update, configure, and work with the
+  project day to day.
+{%- if include_sandbox %}
+- [Run the sandbox](how-to/run-the-sandbox.md) — build, start, and work inside the
+  containerised agent sandbox.
+{%- endif %}
+{%- if sdd_framework != 'none' %}
+- [Spec-driven development](how-to/spec-driven-development.md) — wire up and use the
+  {{ 'Spec-Kit' if sdd_framework == 'spec-kit' else 'OpenSpec' }} workflow.
+{%- endif %}
+
+**Reference** — information-oriented:
+
+- [API reference](reference/{{ package_name }}.md) — generated from docstrings.
+- [Tools reference](reference/tools.md) — lookup table of every tool, its config,
+  and how it runs.
+{%- if include_sandbox %}
+- [Sandbox reference](reference/sandbox.md) — services, ports, env vars, and limits.
+{%- endif %}
+
+**Skills** — the nine workflow procedures (`/explore`, `/spec`, `/plan`, `/test`,
+`/delegate`, `/review`, `/verify`, `/debug`, `/capture`); start at the
+[skills overview](skills/README.md).
+
+**Guidelines** — project standards for [testing](guidelines/testing.md),
+[documentation](guidelines/documentation.md), and the [changelog](guidelines/changelog.md).
+
+[Changelog](changelog.md) tracks released changes.

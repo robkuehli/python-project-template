@@ -1,0 +1,36 @@
+name: Docs
+
+# Deploys the *template's own* docs site (copier-python-template/docs/) to
+# GitHub Pages. The generated project carries its own docs workflow in
+# template/.github/workflows/docs.yml.jinja — different repo, no collision.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "copier-python-template/docs/**"
+      - "copier-python-template/mkdocs.yml"
+      - ".github/workflows/docs.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv + Python
+        # setup-uv stopped publishing moving major/minor tags as a supply-chain
+        # hardening measure — pin to a full version and bump deliberately.
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Build & deploy to GitHub Pages
+        run: |
+          uv run --with 'mkdocs-material>=9.5' \
+            mkdocs gh-deploy --force --strict -f copier-python-template/mkdocs.yml

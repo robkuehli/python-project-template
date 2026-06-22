@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#
+# statusline.sh — Custom statusline für Claude Code.
+# Ort: .claude/scripts/statusline.sh  ·  registriert in settings.json ("statusLine")
+#
+# Pattern: nutzt `ccusage statusline` wenn verfügbar (Token/Cost-Tracking),
+# fällt sonst auf eine schlanke Variante zurück (Model · Branch · Context-Hinweis).
+#
+# Hintergrund (Anthropic Best Practices): "Track context usage continuously
+# with a custom status line."
+#
+# ccusage installieren (einmalig, optional):
+#   npm i -g ccusage           # oder: bun add -g ccusage / pnpm add -g ccusage
+# Doku: https://github.com/ryoppippi/ccusage
+set -euo pipefail
+
+# Hook-Payload via stdin: { session_id, model:{display_name,id}, workspace:{cwd}, ... }
+PAYLOAD=$(cat)
+
+# --- 1) Bevorzugt: ccusage (falls vorhanden) ---------------------------------
+if command -v ccusage >/dev/null 2>&1; then
+  printf '%s' "$PAYLOAD" | ccusage statusline 2>/dev/null && exit 0
+fi
+# Fallback: ccusage via npx/bunx (network-Hop in Kauf nehmen, gecached schnell)
+if command -v bunx >/dev/null 2>&1; then
+  printf '%s' "$PAYLOAD" | bunx -y ccusage@latest statusline 2>/dev/null && exit 0
+fi
+
+# --- 2) Schlanker Fallback ohne Node-Toolchain -------------------------------
+MODEL=$(printf '%s' "$PAYLOAD" | jq -r '.model.display_name // .model.id // "claude"')
+CWD=$(printf '%s' "$PAYLOAD" | jq -r '.workspace.cwd // .cwd // empty')
+[ -n "$CWD" ] && DIR=$(basename "$CWD") || DIR="?"
+
+BRANCH=""
+if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then
+  BRANCH=$(git -C "$CWD" symbolic-ref --short HEAD 2>/dev/null || git -C "$CWD" rev-parse --short HEAD 2>/dev/null || true)
+fi
+
+if [ -n "$BRANCH" ]; then
+  printf '%s · %s · %s' "$MODEL" "$DIR" "$BRANCH"
+else
+  printf '%s · %s' "$MODEL" "$DIR"
+fi

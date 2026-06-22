@@ -76,10 +76,14 @@ repos:
         types: [sql]
 {%- endif %}
 
-      - id: pytest
-        name: pytest (with pytest-sugar)
-        entry: python -c "import pytest, sys; rc = pytest.main(sys.argv[1:]); raise SystemExit(0 if rc == 5 else rc)"
+      - id: interrogate
+        name: interrogate (docstring coverage)
+        entry: interrogate -c pyproject.toml
         language: system
         pass_filenames: false
-        always_run: true
-        args: ["-p", "no:cacheprovider"]
+        types: [python]
+
+      # pytest is intentionally NOT a pre-commit hook:
+      #   - `always_run: true` would slow every commit, even doc-only changes.
+      #   - It is enforced in CI (`.github/workflows/ci.yml`) and runs locally
+      #     via `just test` / `just qa` — both are the verify gate before commit.

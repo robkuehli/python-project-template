@@ -1,0 +1,29 @@
+# Codex CLI — project-scoped config. Merges with `~/.codex/config.toml`;
+# user-level keys win for auth/provider/profile-selection (see project-scope
+# constraint in the schema). Defaults below mirror the maintainer-recommended
+# interactive setup; for CI, prefer flags on `codex exec` over editing here:
+#
+#   codex exec --sandbox read-only --ask-for-approval untrusted ...
+#
+# Schema: https://developers.openai.com/codex/config-reference
+
+# "medium" is the documented all-day driver; "xhigh" can cost 3–5× tokens.
+# Override per-session with `/effort` or `--reasoning-effort`.
+model_reasoning_effort = "medium"
+
+# workspace-write + on-request is the maintainer default for interactive use.
+# https://developers.openai.com/codex/agent-approvals-security
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+# --- Optional MCP servers ---------------------------------------------------
+# Context7 fetches up-to-date library docs into the model context — solves the
+# stale-training-data problem for Python libs. Opt-in; requires Node on PATH.
+# Setup: https://mcp.directory/blog/context7-mcp-complete-guide-2026
+#
+# [mcp_servers.context7]
+# command = "npx"
+# args = ["-y", "@upstash/context7-mcp@latest"]
+
+# Filesystem / git / GitHub MCPs are intentionally omitted: `gh` and shell
+# tools are 4–32× cheaper per task and already in the model's training data.

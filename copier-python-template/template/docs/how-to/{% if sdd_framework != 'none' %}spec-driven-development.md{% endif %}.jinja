@@ -1,0 +1,222 @@
+# Spec-driven development
+
+This project is configured to use **{{ 'Spec-Kit' if sdd_framework == 'spec-kit' else 'OpenSpec' }}** for spec-driven development (SDD).
+
+!!! warning "Doc freshness"
+    Content here was written against **{{ 'Spec-Kit ≥ v0.8 (plugin architecture)' if sdd_framework == 'spec-kit' else 'OpenSpec `@latest` at template generation' }}**.
+    Both tools are rolling-release — flag names and slash-command sets drift
+    between releases. **When this doc disagrees with the CLI, trust the CLI
+    and the upstream docs:**
+
+    - {{ 'Spec-Kit: <https://github.com/github/spec-kit> · [Installation Guide](https://github.github.io/spec-kit/installation.html)' if sdd_framework == 'spec-kit' else 'OpenSpec: <https://github.com/Fission-AI/OpenSpec> · [Getting Started](https://github.com/Fission-AI/OpenSpec/blob/main/docs/getting-started.md) · [CLI Reference](https://github.com/Fission-AI/OpenSpec/blob/main/docs/cli.md)' }}
+    - Run `{{ 'specify --help' if sdd_framework == 'spec-kit' else 'openspec --help' }}` locally for the authoritative flag list.
+
+## When to reach for SDD
+
+SDD pays off when the cost of the agent guessing wrong is higher than the cost
+of writing the spec.
+
+| Task | Use SDD? |
+|---|---|
+| New feature touching >3 files | Yes |
+| Schema migration / backfill | Yes (always) |
+| Refactor with API changes | Yes |
+| Pipeline rebuild (dbt, Airflow, …) | Yes |
+| New RAG or eval pipeline | Yes |
+| Bug fix in 1–2 files | No — go straight to `/plan` |
+| Lint / docstring / config tweak | No |
+| Spike / prototype | No |
+
+> *"If you'd be annoyed to have the agent interpret requirements differently
+> than you meant, write the spec. If you could fix the output in a quick
+> follow-up prompt, skip it."*
+> — Augment Code, April 2026
+{%- if sdd_framework == 'spec-kit' %}
+
+## Spec-Kit (configured)
+
+Spec-Kit is greenfield-first: multi-artifact spec → plan → research → data-model
+→ tasks, with a built-in `/speckit-analyze` quality gate. Typical spec volume
+~800 lines.
+
+### One-time install
+
+```bash
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+specify check
+```
+
+### Initialise inside this project
+
+> The Copier `_tasks` step already runs this for you when the CLI is on
+> `PATH` at generation time. The block below is the manual fallback.
+
+```bash
+specify init . --here --integration {{ sdd_install_agent }} --force
+```
+
+`--integration` replaced the older `--ai` flag with the plugin-architecture
+migration (Spec-Kit ≥ v0.8). Run `specify check` to see all integrations
+your installed CLI supports — at time of writing the list includes
+`claude`, `codex`, `opencode`, `cursor`, `copilot` and several more.
+
+### Memory architecture
+
+| File | Contents | Read by |
+|---|---|---|
+| `.specify/memory/constitution.md` | Architectural principles, non-negotiable | Spec-Kit (every phase) |
+| `AGENTS.md` (repo root) | Executor rules, QA commands | All agents |
+| `CLAUDE.md` | Claude-Code glue (model + permissions) | Claude Code only |
+
+On conflict, precedence is **Constitution > spec.md > plan.md > tasks.md > code**.
+
+### What gets generated
+
+```
+.specify/
+├── memory/constitution.md      # architectural principles (non-negotiable)
+├── scripts/                    # env validation & helpers
+├── specs/<feature>/            # spec.md, plan.md, research.md, data-model.md, tasks.md
+└── templates/                  # markdown skeletons
+```
+
+### Workflow
+
+```
+/speckit-constitution     → write the non-negotiables once per project
+/speckit-specify <feat>   → spec.md (what / why, technology-agnostic)
+/speckit-clarify          → resolve ambiguities before planning
+/speckit-plan             → plan.md (technical architecture, the "how")
+/speckit-tasks            → tasks.md (atomic, TDD-ready, [P] = parallel)
+/speckit-analyze          → quality gate across all artefacts
+/speckit-implement        → execute tasks in order
+```
+
+### Update later
+
+```bash
+uv tool install specify-cli --force --from git+https://github.com/github/spec-kit.git
+```
+{%- elif sdd_framework == 'openspec' %}
+
+## OpenSpec (configured)
+
+OpenSpec is brownfield-first: short delta proposals on a living master spec.
+Typical spec volume ~250 lines. Three phases: propose → apply → archive.
+
+### One-time install
+
+Requires Node.js 20.19+.
+
+```bash
+npm install -g @fission-ai/openspec@latest
+openspec --version
+```
+
+### Initialise inside this project
+
+> The Copier `_tasks` step already runs this for you when the CLI is on
+> `PATH` at generation time. The block below is the manual fallback.
+
+```bash
+openspec init --tools {{ sdd_install_agent }} --force
+```
+
+`--tools` accepts a comma-separated list (`claude,cursor`) or `all`. The
+upstream [supported-tools list](https://github.com/Fission-AI/OpenSpec/blob/main/docs/supported-tools.md)
+covers 30+ agents (including `claude`, `codex`, `opencode`, `cursor`,
+`cline`, `windsurf`, `kilocode`, `gemini`, …). Note that OpenSpec uses
+`github-copilot`, not `copilot` — if you picked `copilot` in the template
+question, re-run init with `--tools github-copilot`.
+
+### Memory architecture
+
+| File | Contents | Read by |
+|---|---|---|
+| `openspec/AGENTS.md` | Lightweight constitution (project-wide rules) | OpenSpec (every phase) |
+| `openspec/project.md` | Stack, conventions | OpenSpec |
+| `AGENTS.md` (repo root) | Executor rules, QA commands | All agents |
+| `CLAUDE.md` | Claude-Code glue | Claude Code only |
+
+There are **two** `AGENTS.md` files. The repo-root one is generic agent
+guardrails; the one in `openspec/` is OpenSpec-specific architecture rules.
+
+### What gets generated
+
+```
+openspec/
+├── AGENTS.md         # lightweight constitution (project-wide rules)
+├── project.md        # stack, conventions
+├── specs/            # living master spec (filled by /opsx:archive)
+└── changes/          # active change proposals
+```
+
+### Workflow
+
+```
+/opsx:propose <change>   → openspec/changes/<change>/proposal.md (+ optional design.md)
+/opsx:apply              → execute tasks.md
+/opsx:archive            → merge delta into openspec/specs/
+```
+
+Delta markers (`ADDED`, `MODIFIED`, `REMOVED`) make drift explicit — you see
+exactly what changes between the proposal and the current system.
+
+### Brownfield tip
+
+For deeper context acquisition on a legacy codebase, configure
+[Repomix MCP](https://github.com/yamadashy/repomix) before running
+`/opsx:propose`. It indexes the codebase so the agent can search rather than
+guess.
+
+### Update later
+
+```bash
+npm update -g @fission-ai/openspec
+openspec --version
+```
+{%- endif %}
+
+## Verify the setup
+
+```bash
+{% if sdd_framework == 'spec-kit' -%}
+specify check                  # validates Python, uv, git, installed agents
+ls .specify/                   # memory/, specs/, scripts/, templates/
+{%- else -%}
+openspec --version             # CLI on PATH
+ls openspec/                   # AGENTS.md, project.md, specs/, changes/
+{%- endif %}
+```
+
+Smoke-test in your agent session: `{{ '/speckit-constitution' if sdd_framework == 'spec-kit' else '/opsx:propose dummy-change' }}`.
+If the slash command is recognised, the setup is wired correctly. For
+OpenSpec, clean up afterwards with `rm -rf openspec/changes/dummy-change`.
+
+## SDD and the workflow skills
+
+The nine workflow skills in `skills/` stay relevant — SDD does not replace
+them, it deepens the ones that matter most:
+
+| Workflow skill | With {{ 'Spec-Kit' if sdd_framework == 'spec-kit' else 'OpenSpec' }} |
+|---|---|
+| `/spec` | Becomes {{ '`/speckit-specify` + `/speckit-clarify`' if sdd_framework == 'spec-kit' else '`/opsx:propose`' }} — a multi-artifact contract instead of one file |
+| `/plan` | {{ 'Becomes `/speckit-plan` + `/speckit-tasks`' if sdd_framework == 'spec-kit' else 'Lives inside the proposal — no separate skill needed' }} |
+| `/test` | Driven from the spec's acceptance criteria as before |
+| `/delegate` | Bundle the spec artefacts directly into the brief |
+| `/review` | Verify the diff against {{ '`spec.md` + `tasks.md`' if sdd_framework == 'spec-kit' else 'the proposal + delta specs' }} |
+
+## Anti-patterns
+
+- **Verbose specs for trivial tasks.** A 16-criterion spec for a one-line
+  bugfix is cargo-cult. Skip SDD for those.
+- **Set-and-forget specs.** On multi-week initiatives, re-align the spec to
+  reality after each iteration. Specs that drift become misleading docs.
+- **Mixing both frameworks.** One repo, one tool. Pick at setup time.
+
+## Further reading
+
+- [Spec-Driven Development with GitHub Spec Kit](https://developer.microsoft.com/blog/spec-driven-development-spec-kit) — Microsoft, 2026
+- [OpenSpec vs Spec Kit (Hashrocket, 2026)](https://hashrocket.com/blog/posts/openspec-vs-spec-kit-choosing-the-right-ai-driven-development-workflow-for-your-team)
+- [Vibe Coding vs Spec-Driven Development (Augment Code, 2026)](https://www.augmentcode.com/guides/vibe-coding-vs-spec-driven-development)
+- [Spec Kit vs OpenSpec vs Superpowers (Tim Chao, Feb 2026)](https://www.timchao.site/en/articles/sdd-tools-comparison-speckit-openspec-superpowers)

@@ -1,0 +1,57 @@
+---
+name: test
+description: >-
+  Derive tests directly from a spec or plan's acceptance criteria. Use after
+  `/spec` (or `/plan` for small tasks) to produce a falsifiable target before
+  the implementation is written. Follows the project's testing guidelines.
+---
+
+# /test
+
+Tests come from the contract, not the implementation. If a test references an
+internal helper, it's the wrong test.
+
+## When to trigger
+
+- Right after `/spec` or `/plan`, before writing implementation code.
+- When changing behaviour of an existing function and tests don't yet cover it.
+
+## Input
+
+- The spec's acceptance criteria, **or**
+- A described behaviour the user wants protected.
+
+## Output shape
+
+For each acceptance criterion, one or more pytest functions:
+
+```python
+def test_<behaviour_description>():
+    """It should <expected behaviour>."""
+    # arrange
+    ...
+    # act
+    result = subject_under_test(...)
+    # assert
+    assert result == ...
+```
+
+- **Parametrize** input variation; never copy-paste tests.
+- **One behaviour per test.** Test name completes the sentence "It should…".
+- **Volatile fields** (timestamps, UUIDs) via `dirty-equals`, not exact equality.
+
+## Rules
+
+- Follow `guidelines/testing.md` — public contracts only, no mocking internals.
+- Map every test to a criterion. If a test doesn't tie back to one, it's
+  speculative; drop it.
+- Tests live in `tests/` mirroring `src/{{ package_name }}/` layout where helpful;
+  unit vs. integration split per the testing guideline.
+- A test you haven't yet seen fail is suspect. Run the test first against the
+  current (failing) code to confirm it actually checks what you think.
+
+## Output to caller
+
+A list of test files and function names you propose to create, with a one-line
+description of each, **before** writing them. Wait for confirmation if the
+list is long or surprising.

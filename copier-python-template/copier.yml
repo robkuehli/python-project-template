@@ -1,5 +1,5 @@
 # Copier configuration for a standard Python project template
-# (uv + just + pre-commit + mkdocs).
+# (uv + just + pre-commit + mkdocs + AI coding agents).
 #
 # Docs:  https://copier.readthedocs.io
 # Usage:
@@ -9,24 +9,74 @@
 # The actual template lives in the `template/` subdirectory.
 
 _subdirectory: "template"
-_min_copier_version: "9.0.0"
+_min_copier_version: "9.4.0"
 _answers_file: ".copier-answers.yml"
 
 # Files inside template/ to skip entirely.
 _exclude:
   - ".git"
+  - ".venv"
+  - ".DS_Store"
   - "__pycache__"
+  - ".mypy_cache"
+  - ".ruff_cache"
+  - ".pylint.d"
   - "*.py[co]"
+  - "site"
+  - "node_modules"
 
 # Post-generation tasks. Only run when Copier is invoked with `--trust`.
 # Without --trust, the project is generated but these are skipped.
 _tasks:
   - "git init -q -b main"
+  # Replace the copied skills directory with a symlink so docs/skills and
+  # the top-level skills/ stay in sync. Copier dereferences symlinks during
+  # copy, so this has to be re-established after generation.
+  - "rm -rf docs/skills && ln -s ../skills docs/skills"
+  # Sandbox secret bootstrap — populates `.env` with `openssl rand` values for
+  # SEARXNG_SECRET (+ CRAWL4AI_API_TOKEN / LANGFUSE_* where enabled) right now,
+  # so the rendered project is ready for `docker compose up` / `just sandbox-up`
+  # without an extra manual step. Idempotent: `just sandbox-init` re-runs the
+  # same logic and skips keys that already exist. Runs *before* `uv sync` so a
+  # later sync failure still leaves a populated `.env` behind. Both branches
+  # WARN-only so generation never hard-fails on a missing host-level prereq.
+  - |
+    {% if include_sandbox and sandbox_auto_init -%}
+    if command -v just >/dev/null 2>&1; then
+      just sandbox-init || echo "WARN: 'just sandbox-init' failed. '.env' is unpopulated; 'docker compose up' / 'just sandbox-up' will fail loudly on the ':?' guards. Re-run manually; see docker/README.md.";
+    else
+      echo "WARN: just not found on PATH. '.env' is unpopulated; 'docker compose up' / 'just sandbox-up' will fail loudly on the ':?' guards. Install just and run 'just sandbox-init' manually; see docker/README.md.";
+    fi
+    {%- else -%}
+    true
+    {%- endif %}
   - "uv sync"
   - "uv run pre-commit install"
+  # SDD bootstrap — runs `init` non-interactively when the CLI is available.
+  # No-op for sdd_framework=none. Both the missing-CLI branch and the
+  # init-failure branch print WARN-only so generation never hard-fails on
+  # a missing host-level prereq or a future flag rename.
+  - |
+    {% if sdd_framework == 'openspec' -%}
+    if command -v openspec >/dev/null 2>&1; then
+      openspec init --tools {{ sdd_install_agent }} --force \
+        || echo "WARN: openspec init failed (CLI may have renamed flags or rejected --tools {{ sdd_install_agent }}). Re-run manually; see docs/how-to/spec-driven-development.md.";
+    else
+      echo "WARN: openspec CLI not found on PATH. Install via 'npm i -g @fission-ai/openspec@latest' and run 'openspec init --tools {{ sdd_install_agent }} --force'. See docs/how-to/spec-driven-development.md.";
+    fi
+    {%- elif sdd_framework == 'spec-kit' -%}
+    if command -v specify >/dev/null 2>&1; then
+      specify init . --here --integration {{ sdd_install_agent }} --force \
+        || echo "WARN: specify init failed. Re-run manually; see docs/how-to/spec-driven-development.md.";
+    else
+      echo "WARN: specify CLI not found on PATH. Install via 'uv tool install specify-cli --from git+https://github.com/github/spec-kit.git' and run 'specify init . --here --integration {{ sdd_install_agent }} --force'. See docs/how-to/spec-driven-development.md.";
+    fi
+    {%- else -%}
+    true
+    {%- endif %}
 
 # ---------------------------------------------------------------------------
-# Questions
+# Project identity
 # ---------------------------------------------------------------------------
 project_name:
   type: str
@@ -64,42 +114,197 @@ github_username:
 
 python_version:
   type: str
-  help: "Target Python version"
+  help: >-
+    Target Python version. Limited to currently-supported releases — Ruff,
+    mypy and pylint trail upstream Python by a few months for new
+    target-version flags. Bump the template (and these choices) when 3.14
+    becomes the default everywhere.
   default: "3.13"
   choices:
     - "3.12"
     - "3.13"
-    - "3.14"
-    - "3.15"
 
+# ---------------------------------------------------------------------------
+# AI coding agents
+# ---------------------------------------------------------------------------
 coding_agents:
   type: str
   multiselect: true
-  help: "Set up config folders for which coding agents? (AGENTS.md is always created)"
+  help: "Which AI coding agents should this project support? (AGENTS.md is always created)"
   choices:
     "Claude Code (.claude/, CLAUDE.md)": "claude_code"
     "Codex CLI (AGENTS.md only)": "codex"
-    "Open Code (.opencode/ + opencode.json)": "opencode"
-    "GitHub Copilot (.github/copilot-instructions.md)": "copilot"
+    "OpenCode (.opencode/ + opencode.json)": "opencode"
+    "Aider (.aider.conf.yml)": "aider"
   default:
     - "claude_code"
     - "codex"
 
+# --- Claude Code -----------------------------------------------------------
 claude_provider:
   type: str
-  help: "How does Claude Code authenticate?"
+  help: "Claude Code: which backend?"
   choices:
-    "LiteLLM gateway → Bedrock (company)": "litellm"
+    "LiteLLM gateway (company / Bedrock / mixed)": "litellm"
     "Claude subscription (Pro/Max, /login)": "subscription"
   default: "litellm"
   when: "{{ 'claude_code' in coding_agents }}"
 
+# --- Codex CLI -------------------------------------------------------------
+codex_provider:
+  type: str
+  help: "Codex CLI: which backend?"
+  choices:
+    "ChatGPT subscription (codex login)": "subscription"
+    "LiteLLM gateway (OpenAI-compatible)": "litellm"
+  default: "subscription"
+  when: "{{ 'codex' in coding_agents }}"
+
+# --- Aider -----------------------------------------------------------------
+aider_provider:
+  type: str
+  help: "Aider: which backend?"
+  choices:
+    "LiteLLM gateway (OpenAI-compatible)": "litellm"
+    "Ollama (local models)": "ollama"
+  default: "litellm"
+  when: "{{ 'aider' in coding_agents }}"
+
+aider_model:
+  type: str
+  help: "Aider default model (model alias on the chosen backend)"
+  default: "{% if aider_provider == 'ollama' %}ollama/qwen3-coder:30b{% else %}claude-sonnet-4-6{% endif %}"
+  when: "{{ 'aider' in coding_agents }}"
+
+# --- OpenCode --------------------------------------------------------------
+# Backend is always Ollama. Cloud-tier models go through the same client
+# (just `:cloud`-tagged) but require an Ollama Cloud subscription.
+ollama_subscription:
+  type: bool
+  help: >-
+    Do you have an Ollama Cloud subscription (ran `ollama signin`)?
+    Required for Cloud/Hybrid tiers below.
+  default: false
+  when: "{{ 'opencode' in coding_agents }}"
+
+ollama_tier:
+  type: str
+  help: "OpenCode model tier (large + small_model defaults follow this)"
+  choices:
+    "Hybrid — large = cloud frontier, small = best local (recommended)": "hybrid"
+    "Cloud — every role on Ollama Cloud frontier models": "cloud"
+    "Local — best local models only": "local"
+  # No subscription → tier forced to 'local' (and the question is skipped).
+  default: "{% if ollama_subscription %}hybrid{% else %}local{% endif %}"
+  when: "{{ 'opencode' in coding_agents and ollama_subscription }}"
+
+# --- Shared backend URLs ---------------------------------------------------
 litellm_base_url:
   type: str
-  help: "LiteLLM gateway base URL (the auth token goes in your shell, never committed)"
+  help: "LiteLLM gateway base URL (auth token lives in your shell, never committed)"
   default: "https://litellm.internal.example.com"
-  when: "{{ 'claude_code' in coding_agents and claude_provider == 'litellm' }}"
+  when: >-
+    {{
+      ('claude_code' in coding_agents and claude_provider == 'litellm')
+      or ('codex' in coding_agents and codex_provider == 'litellm')
+      or ('aider' in coding_agents and aider_provider == 'litellm')
+    }}
 
+ollama_base_url:
+  type: str
+  help: "Ollama base URL (local daemon, default localhost:11434)"
+  default: "http://localhost:11434"
+  when: >-
+    {{
+      'opencode' in coding_agents
+      or ('aider' in coding_agents and aider_provider == 'ollama')
+    }}
+
+# ---------------------------------------------------------------------------
+# Sandbox (Docker-Compose)
+# ---------------------------------------------------------------------------
+include_sandbox:
+  type: bool
+  help: >-
+    Generate a Docker-Compose sandbox? Mounts the repo into an isolated container
+    so the agent can't reach host secrets. Includes optional SearXNG (web search)
+    and LLM observability.
+  default: false
+
+sandbox_observability:
+  type: str
+  help: >-
+    Sandbox observability / cost-tracking service. Default is MLflow because
+    the Langfuse v3 self-hosted stack adds five sidecars (ClickHouse, Redis,
+    MinIO, Worker, Postgres) on top of the web service — useful only when LLM
+    cost/trace dashboards are actually needed.
+  choices:
+    "MLflow (classic ML experiment tracking, single container)": "mlflow"
+    "Langfuse (LLM-native, cost + tracing + dashboards; v3 = 6 containers)": "langfuse"
+    "None (no observability service)": "none"
+  default: "mlflow"
+  when: "{{ include_sandbox }}"
+
+include_crawl4ai:
+  type: bool
+  help: >-
+    Add a Crawl4AI sidecar (Playwright + Chromium, LLM-friendly markdown output)
+    for JS-rendered fetches? Without it, agents fall back to their native
+    HTTP-only WebFetch tools — fine for static docs, blind to SPAs. Adds
+    ~1.4 GB image pull on first start (Crawl4AI 0.8.x).
+  default: false
+  when: "{{ include_sandbox }}"
+
+sandbox_auto_init:
+  type: bool
+  help: >-
+    Auto-generate missing sandbox secrets into `.env` **now**, at the end of
+    `copier copy` (requires `--trust`; without it run `just sandbox-init`
+    manually after generation)? Yes → we run `openssl rand -hex` for
+    SEARXNG_SECRET (plus CRAWL4AI_API_TOKEN / LANGFUSE_* where enabled) and
+    write plaintext values into a local `.env`. `.env` is in `.gitignore` and
+    never committed; `just sandbox-init` re-runs the same logic idempotently.
+    No → nothing is written; populate `.env` yourself (e.g. via a vault or
+    secret-injection pipeline) before `just sandbox-up` — otherwise the `:?`
+    guards in `docker-compose.yml` will fail loudly. Pick No if your security
+    policy forbids storing secrets in a plaintext `.env` on the host.
+  default: true
+  when: "{{ include_sandbox }}"
+
+# ---------------------------------------------------------------------------
+# Spec-Driven Development
+# ---------------------------------------------------------------------------
+sdd_framework:
+  type: str
+  help: >-
+    Wire up a Spec-Driven Development framework? See docs/how-to/spec-driven-development.md
+    after generation for guidance.
+  choices:
+    "None — informal /spec via the workflow skill is enough": "none"
+    "OpenSpec — lightweight, brownfield-first, npm-based": "openspec"
+    "Spec-Kit — heavier, greenfield-first, uv-based": "spec-kit"
+  default: "none"
+
+sdd_install_agent:
+  type: str
+  help: >-
+    Which agent should the SDD framework install its slash-commands for?
+    Both frameworks generate markdown-only artefacts; you can hand-port the
+    command set to other agents later. Defaults to the first agent you
+    enabled above (claude > codex > opencode), or 'claude' as fallback.
+  choices:
+    "Claude Code (.claude/commands/)": "claude"
+    "Codex CLI": "codex"
+    "OpenCode": "opencode"
+    "Cursor": "cursor"
+    "Copilot": "copilot"
+  default: >-
+    {% if 'claude_code' in coding_agents %}claude{% elif 'codex' in coding_agents %}codex{% elif 'opencode' in coding_agents %}opencode{% else %}claude{% endif %}
+  when: "{{ sdd_framework != 'none' }}"
+
+# ---------------------------------------------------------------------------
+# Tooling extras
+# ---------------------------------------------------------------------------
 include_sql:
   type: bool
   help: "Include SQL tooling (sqlfluff pre-commit hook + config)?"
@@ -119,3 +324,101 @@ license:
     - "Proprietary"
     - "MIT"
     - "Apache-2.0"
+
+# ---------------------------------------------------------------------------
+# Shared agent guardrails (SPOT — single source of truth)
+# ---------------------------------------------------------------------------
+# These three lists are the canonical inputs for tool-specific permission
+# files (`.claude/settings.json`, `opencode.json`). They are NOT prompted —
+# `when: false` keeps them out of the answers file but still injects them
+# into the Jinja render context. Edit them here; every tool config updates
+# in lockstep. Aider has no native permission system; see AGENTS.md.
+shared_deny_bash:
+  type: yaml
+  when: false
+  default:
+    - "rm -rf*"
+    - "rm -fr*"
+    - "rm -r -f*"
+    - "rm -f -r*"
+    - "rm --recursive*"
+    - "sudo rm*"
+    - "sudo *"
+    - "chmod 777*"
+    - "chmod -R 777*"
+    - "curl * | bash*"
+    - "curl * | sh*"
+    - "wget * | bash*"
+    - "wget * | sh*"
+    - "* | sudo *"
+    - "DROP TABLE*"
+    - "TRUNCATE*"
+
+shared_deny_read:
+  type: yaml
+  when: false
+  default:
+    - "**/.env"
+    - "**/.env.*"
+    - "**/*secret*"
+    - "**/*credentials*"
+    - "**/id_rsa*"
+    - "**/id_ed25519*"
+    - "**/*.pem"
+    - "**/*.key"
+
+# Paths the agent must never *write* to — guardrails for the files that define
+# the guardrails themselves (OWASP ASI06: Memory & Context Poisoning). Without
+# this list, a hijacked agent could rewrite its own deny rules, hooks, or CI
+# pipeline and persist the change across sessions. `**/.env*` is appended
+# in-jinja by `settings.json.jinja` (already covered by `shared_deny_read`).
+#
+# Granularity note: `.claude/**`, `.codex/**`, `.opencode/**` are NOT blanket-
+# denied because `/capture review` legitimately writes to `.claude/LEARNINGS.md`
+# and the inbox. Only the structural/trust-sensitive subpaths are protected.
+shared_deny_write:
+  type: yaml
+  when: false
+  default:
+    # Claude Code: trust-sensitive subpaths only — LEARNINGS*.md stays writable.
+    - ".claude/settings.json"
+    - ".claude/settings.local.json"
+    - ".claude/agents/**"
+    - ".claude/hooks/**"
+    - ".claude/commands/**"
+    - ".claude/scripts/**"
+    - ".claude/plugins/**"
+    # Codex / OpenCode / Aider config.
+    - ".codex/**"
+    - ".opencode/**"
+    - ".aider.conf.yml"
+    # Top-level agent guidance and project-wide rules.
+    - "AGENTS.md"
+    - "CLAUDE.md"
+    # Sandbox + CI definitions.
+    - "docker/**"
+    - "docker-compose.yml"
+    - ".github/**"
+    - ".pre-commit-config.yaml"
+    - ".gitleaks.toml"
+    # Build/task config — editing these is a human review decision.
+    - "pyproject.toml"
+    - "justfile"
+
+shared_ask_bash:
+  type: yaml
+  when: false
+  default:
+    - "git add*"
+    - "git commit*"
+    - "git branch*"
+    - "git checkout*"
+    - "git switch*"
+    - "git tag*"
+    - "git stash*"
+    - "git push*"
+    - "git reset*"
+    - "git rebase*"
+    - "git merge*"
+    - "uv add*"
+    - "uv remove*"

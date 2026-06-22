@@ -1,0 +1,96 @@
+# Developer workflow
+
+How to work with AI coding agents in this project. **Not a process** — a toolkit
+of independent skills you compose as the task demands.
+
+## Philosophy
+
+A workflow is not a checklist; it is a vocabulary. Each of the nine skills in
+`skills/` has a clear **trigger** (when), defined **input** (what goes in) and
+defined **output** (what comes out). You combine and skip as the work calls for.
+
+The point is not to follow every step — it is to know which step the situation
+needs.
+
+## Two task sizes
+
+**Small tasks** (under ~2 hours, known codebase, you're at the wheel):
+
+```
+/explore (if needed)  →  /plan  →  implement  →  /review
+```
+
+No formal spec, no autonomous delegation. The overhead would exceed the benefit.
+
+**Big tasks** (a real feature, unfamiliar codebase, or autonomous agent run):
+
+```
+/explore → /spec → /plan → /test → /delegate → /review → /verify → /capture
+```
+
+Not every step is always necessary. Your judgement decides. The workflow doesn't
+force — it structures.
+
+> **Rule of thumb:** if you review every commit yourself and don't let an agent
+> run unattended, you don't need the full flow.
+
+## Three operating modes
+
+| Mode | Who codes | When |
+|---|---|---|
+| **Solo** | You implement; the AI is a sparring partner and reviewer. | Deep refactors where you want full control. |
+| **Hybrid** | You plan and review; the agent implements under your eye. | The everyday mode this project is tuned for. |
+| **Delegated** | You hand off a full spec and plan; the agent runs autonomously to review. | Unattended runs in an isolated sandbox, picked up afterwards for review. |
+
+## The nine skills
+
+| Skill | Trigger | Output |
+|---|---|---|
+| [`/explore`](../skills/explore/SKILL.md) | "I need to understand this area" | Relevant files, patterns, open questions |
+| [`/spec`](../skills/spec/SKILL.md) | "I need to define a feature" | Requirements, acceptance criteria, edge cases, out-of-scope |
+| [`/plan`](../skills/plan/SKILL.md) | "How do I approach this?" | Ordered steps with dependencies + verification |
+| [`/test`](../skills/test/SKILL.md) | "I need tests from this spec" | Pytest functions mapped to acceptance criteria |
+| [`/delegate`](../skills/delegate/SKILL.md) | "An agent should run this autonomously" | Self-contained brief: spec + plan + tests + constraints |
+| [`/review`](../skills/review/SKILL.md) | "I want to check this change" | Findings by severity, verdict |
+| [`/verify`](../skills/verify/SKILL.md) | "Prove the change works before saying done" | Evidence (command + output) mapped to acceptance criteria |
+| [`/debug`](../skills/debug/SKILL.md) | "Something doesn't work" | Repro, hypotheses, root cause, fix + regression test |
+| [`/capture`](../skills/capture/SKILL.md) | "I learned something" | One-line dated rule with *why* |
+
+## How the skills compose
+
+`/plan` replaces `/spec` for small tasks and **decomposes** a spec for big
+tasks — no separate breakdown step.
+
+`/delegate` consumes the output of `/spec` and `/plan`. Without that foundation
+the receiving agent fills the gaps with guesswork.
+
+`/capture` is **not** an appendix to `/review`. It is a separate step, because
+otherwise learnings die in the chat window.
+
+## Feedback loops
+
+While writing a `/spec`, a knowledge gap may force you back to `/explore`. That
+is not a failure — it is the workflow doing its job.
+
+If an agent during implementation discovers the spec doesn't cover a case:
+**stop, return to `/spec`, do not improvise**.
+
+## Three orthogonal axes
+
+The workflow lives on three independent axes. You only need to actively
+remember the first two:
+
+- **Skills (the WHAT):** the 9 verbs above. Single source of truth, tool-agnostic.
+- **Modes (the WHERE):** typically two — an architect seat (read-only, planning)
+  and a coder seat (implementation). In Claude Code these are *Plan Mode* +
+  *Default*; in OpenCode the `plan` and `build` primary modes; in Aider/Codex
+  the same separation lives in the conversation rather than the UI.
+- **Subagents (the HOW):** read-only specialists (`researcher`, `reviewer`,
+  `security-auditor`) that the primary mode spawns automatically. Not your
+  cognitive load — let the runtime handle them.
+
+## Where to start
+
+For your first real task on this project: run `/explore` to map the area, then
+`/plan` your approach, then go. Reach for `/spec` and `/delegate` only when the
+scope justifies them.

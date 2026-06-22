@@ -1,0 +1,80 @@
+# Agent sandbox image — see ../README.md for usage.
+#
+# Isolation strategy:
+#   - non-root user (uid 1000, 'agent')
+#   - repo is the *only* writable bind mount
+#   - egress is open (the agent needs to fetch docs / hit the LLM backend);
+#     isolation comes from the lack of secret mounts, resource limits,
+#     and the project's permission/deny rules — not from network walls.
+
+ARG PYTHON_VERSION=3.13
+# Minor (3.12/3.13) is pinned via the Copier `python_version` choice; the patch
+# release floats with the upstream Debian-slim rebuild. For strict reproducibility
+# (e.g. in CI artefacts), pin to a digest, e.g.:
+#   FROM python:3.13.5-slim@sha256:<digest>
+FROM python:${PYTHON_VERSION}-slim
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+# --- System packages (and Node, needed by every npm-based agent) -------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git curl ca-certificates build-essential ripgrep jq \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- uv (fast Python package manager) ---------------------------------------
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
+    && mv /root/.local/bin/uvx /usr/local/bin/uvx
+
+# --- just (task runner) -----------------------------------------------------
+RUN curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \
+    | bash -s -- --to /usr/local/bin
+
+# --- Agent CLIs (only the selected ones) ------------------------------------
+{%- if 'claude_code' in coding_agents %}
+RUN npm install -g @anthropic-ai/claude-code
+{%- endif %}
+{%- if 'codex' in coding_agents %}
+RUN npm install -g @openai/codex
+{%- endif %}
+{%- if 'opencode' in coding_agents %}
+RUN npm install -g opencode-ai
+{%- endif %}
+{%- if 'aider' in coding_agents %}
+RUN python -m pip install --break-system-packages --no-cache-dir aider-chat
+{%- endif %}
+
+# --- Spec-Driven Development CLI (only when selected) -----------------------
+{%- if sdd_framework == 'openspec' %}
+RUN npm install -g @fission-ai/openspec@latest \
+    && openspec --version
+{%- elif sdd_framework == 'spec-kit' %}
+# Install into system-wide locations so the non-root `agent` user can run it.
+# The smoke-test (`specify check`) catches permission/path issues at build
+# time instead of at first agent run.
+RUN UV_TOOL_BIN_DIR=/usr/local/bin UV_TOOL_DIR=/opt/uv/tools \
+    uv tool install specify-cli \
+        --from git+https://github.com/github/spec-kit.git \
+    && chmod -R a+rX /opt/uv/tools \
+    && specify --help >/dev/null
+{%- endif %}
+
+# --- Validation toolchain (matches pre-commit) ------------------------------
+RUN python -m pip install --break-system-packages --no-cache-dir \
+        pre-commit pytest pytest-cov ruff mypy
+
+# --- non-root agent user ----------------------------------------------------
+RUN useradd -m -u 1000 -s /bin/bash agent
+USER agent
+ENV HOME=/home/agent \
+    PATH="/home/agent/.local/bin:${PATH}" \
+    PRE_COMMIT_HOME="/workspace/.cache/pre-commit"
+WORKDIR /workspace
+
+# No ENTRYPOINT: `docker compose run agent` drops you into bash; the compose
+# file overrides this with `sleep infinity` so `up` keeps it idling.
+CMD ["bash"]
