@@ -25,7 +25,7 @@
     
     
       
-        <title>copier-python-template</title>
+        <title>python-project-template</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#copier-python-template" class="md-skip">
+        <a href="#python-project-template" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +92,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="copier-python-template" class="md-header__button md-logo" aria-label="copier-python-template" data-md-component="logo">
+    <a href="." title="python-project-template" class="md-header__button md-logo" aria-label="python-project-template" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            copier-python-template
+            python-project-template
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -230,13 +230,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="copier-python-template" class="md-nav__button md-logo" aria-label="copier-python-template" data-md-component="logo">
+    <a href="." title="python-project-template" class="md-nav__button md-logo" aria-label="python-project-template" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    copier-python-template
+    python-project-template
   </label>
   
     <div class="md-nav__source">
@@ -579,7 +579,7 @@
   
 
 
-<h1 id="copier-python-template">copier-python-template<a class="headerlink" href="#copier-python-template" title="Permanent link">&para;</a></h1>
+<h1 id="python-project-template">python-project-template<a class="headerlink" href="#python-project-template" title="Permanent link">&para;</a></h1>
 <p>A reusable <a href="https://copier.readthedocs.io">Copier</a> template for standard Python
 projects, wired up with <strong>uv</strong>, <strong>just</strong>, <strong>pre-commit</strong>, and <strong>MkDocs</strong>.</p>
 <div class="admonition info">
@@ -593,7 +593,7 @@ skills, API reference) live in that project's own MkDocs site.</p>
 <p>Generating a project produces:</p>
 <ul>
 <li><strong>uv</strong> for dependencies/environments, with <code>[dependency-groups]</code> (<code>dev</code>, <code>docs</code>)
-  and a <code>.python-version</code> (default 3.13; 3.12–3.13 selectable — bump when
+  and a <code>.python-version</code> (default 3.13; 3.12–3.14 selectable — bump when
   Ruff/mypy/pylint catch up to newer target-version flags).</li>
 <li><strong>just</strong> task runner (<code>install</code>, <code>qa</code>, <code>lint</code>, <code>format</code>, <code>typecheck</code>, <code>test</code>,
   <code>cov</code>, <code>docs</code>, <code>update</code>, <code>clean</code>).</li>
@@ -606,11 +606,16 @@ skills, API reference) live in that project's own MkDocs site.</p>
   (MkDocs → GitHub Pages), plus <strong>Dependabot</strong>.</li>
 <li>Agent setup: a root <strong><code>AGENTS.md</code></strong> (read by Claude Code, Codex CLI, Aider and
   OpenCode), plus optional <code>.claude/</code>, <code>.opencode/</code> (+ <code>opencode.json</code>), and
-  <code>.aider.conf.yml</code>. Backend per tool: subscription / LiteLLM gateway / Ollama.</li>
+  <code>.aider.conf.yml</code>. Backend per tool: subscription / LiteLLM gateway / Ollama.
+  Feature parity across tools: subagents (researcher / reviewer /
+  security-auditor), Verify-on-Stop hooks/plugins, granular permissions (where
+  the tool supports them), and the Context7 MCP server (opt-in via
+  <code>include_context7</code>).</li>
 <li>A <strong><code>guidelines/</code></strong> folder (testing / documentation / changelog standards) and
   a <strong><code>skills/</code></strong> folder with the 9 workflow skills (<code>/explore</code>, <code>/spec</code>, <code>/plan</code>,
   <code>/test</code>, <code>/delegate</code>, <code>/review</code>, <code>/verify</code>, <code>/debug</code>, <code>/capture</code>) in
-  <code>SKILL.md</code> format.</li>
+  <code>SKILL.md</code> format. <code>/capture</code> promotes a private learning into team-shared
+  <code>guidelines/*.md</code> or <code>AGENTS.md</code>.</li>
 <li>An optional <strong>Docker-Compose sandbox</strong> that bind-mounts the repo into an
   isolated container so agents can't reach host secrets, with optional SearXNG,
   Crawl4AI, and LLM observability (MLflow / Langfuse).</li>

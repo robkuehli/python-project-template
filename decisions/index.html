@@ -25,7 +25,7 @@
     
     
       
-        <title>Decisions - copier-python-template</title>
+        <title>Decisions - python-project-template</title>
       
     
     
@@ -92,7 +92,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="copier-python-template" class="md-header__button md-logo" aria-label="copier-python-template" data-md-component="logo">
+    <a href=".." title="python-project-template" class="md-header__button md-logo" aria-label="python-project-template" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -106,7 +106,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            copier-python-template
+            python-project-template
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -230,13 +230,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="copier-python-template" class="md-nav__button md-logo" aria-label="copier-python-template" data-md-component="logo">
+    <a href=".." title="python-project-template" class="md-nav__button md-logo" aria-label="python-project-template" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    copier-python-template
+    python-project-template
   </label>
   
     <div class="md-nav__source">
@@ -492,7 +492,7 @@
 
 <h1 id="decisions">Decisions<a class="headerlink" href="#decisions" title="Permanent link">&para;</a></h1>
 <p>Notable design choices baked into the template. For the broader philosophy, see
-<a href="https://github.com/robkuehli/python-project-template/blob/main/PRINCIPLES.md"><code>PRINCIPLES.md</code></a>
+<a href="https://github.com/robkuehli/python-project-template/blob/main/_dev/PRINCIPLES.md"><code>PRINCIPLES.md</code></a>
 in the repo root.</p>
 <ul>
 <li><strong>Python version is consistent everywhere.</strong> The chosen version is pinned in
@@ -514,6 +514,20 @@ in the repo root.</p>
 <li><strong>The sandbox favours a small default footprint.</strong> MLflow (one container) is
   the default observability service; Langfuse v3 (six containers) is opt-in for
   when LLM cost/trace dashboards are actually needed.</li>
+<li><strong>Two-tier memory model (private vs team).</strong> Agent memory is split: the
+  <em>private</em> tier is what the agent accumulates on your machine automatically
+  (Claude Code Auto-Memory, Codex <code>features.memories</code>) — not shared via git, for
+  personal preferences and one-off corrections. The <em>team</em> tier is
+  <code>guidelines/*.md</code> + <code>AGENTS.md</code> — curated, versioned, reviewed. The <code>/capture</code>
+  skill is the manual bridge: promote a private learning into team memory when
+  it would prevent the same mistake for a colleague. The earlier
+  <code>.claude/LEARNINGS.md</code> SessionEnd-hook capture loop was removed in favour of
+  native Auto-Memory; team-sharing is preserved via <code>/capture</code> → <code>guidelines/</code>.</li>
+<li><strong>OpenCode has no native dynamic memory.</strong> OpenCode's <code>instructions</code> array
+  loads <code>AGENTS.md</code> + <code>guidelines/*.md</code> as static project memory (team tier
+  only). If OpenCode later ships an Auto-Memory feature, the template should
+  follow suit (analogous to Claude Auto-Memory / Codex Memories) — track this
+  and migrate if it lands.</li>
 </ul>
 
 

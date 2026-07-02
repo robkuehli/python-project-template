@@ -27,7 +27,7 @@
     
     
       
-        <title>Developing the template - copier-python-template</title>
+        <title>Developing the template - python-project-template</title>
       
     
     
@@ -94,7 +94,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="copier-python-template" class="md-header__button md-logo" aria-label="copier-python-template" data-md-component="logo">
+    <a href=".." title="python-project-template" class="md-header__button md-logo" aria-label="python-project-template" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -108,7 +108,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            copier-python-template
+            python-project-template
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -232,13 +232,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="copier-python-template" class="md-nav__button md-logo" aria-label="copier-python-template" data-md-component="logo">
+    <a href=".." title="python-project-template" class="md-nav__button md-logo" aria-label="python-project-template" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
 
     </a>
-    copier-python-template
+    python-project-template
   </label>
   
     <div class="md-nav__source">
@@ -628,48 +628,62 @@
 <h1 id="developing-the-template">Developing the template<a class="headerlink" href="#developing-the-template" title="Permanent link">&para;</a></h1>
 <p>How to work on the template itself — not on a generated project.</p>
 <h2 id="repo-layout">Repo layout<a class="headerlink" href="#repo-layout" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>python-project-template/          # git root
-├── justfile                      # template smoketests + docs recipes
-├── PRINCIPLES.md                 # design principles
-├── .github/workflows/docs.yml    # deploys THIS site to GitHub Pages
-└── copier-python-template/
-    ├── copier.yml                # prompts, tasks, exclude rules
-    ├── README.md                 # GitHub landing page
-    ├── mkdocs.yml                # config for THIS site (the template&#39;s docs)
-    ├── docs/                     # THIS site&#39;s content (template-product docs)
-    └── template/                 # ← everything here renders INTO a generated project
-        ├── mkdocs.yml.jinja      #   the generated project&#39;s own docs site
-        ├── docs/                 #   the generated project&#39;s docs content
-        └── ...
+<div class="highlight"><pre><span></span><code>python-project-template/           # git root = Copier entry point
+├── copier.yml                      # prompts, tasks, exclude rules (_subdirectory: &quot;template&quot;)
+├── README.md                       # GitHub landing page (dev)
+├── .gitignore                      # dev gitignore
+├── .github/workflows/docs.yml      # deploys THIS site to GitHub Pages
+├── .claude/                        # agent config for the template development
+├── _dev/                           # all dev-only files (never copied into a generated project)
+│   ├── CHANGELOG.md                # template-eigener Changelog
+│   ├── PRINCIPLES.md               # design principles
+│   ├── roadmap.md
+│   ├── TODO.md
+│   ├── justfile                    # smoketests + docs recipes (invoke: `just -f _dev/justfile ...`)
+│   ├── mkdocs.yml                  # config for THIS site (the template&#39;s docs)
+│   └── docs/                       # THIS site&#39;s content (template-product docs)
+└── template/                       # ← everything here renders INTO a generated project
+    ├── mkdocs.yml.jinja            #   the generated project&#39;s own docs site
+    ├── docs/                       #   the generated project&#39;s docs content
+    ├── CHANGELOG.md.jinja          #   the generated project&#39;s changelog stub
+    └── ...
 </code></pre></div>
 <p>The boundary that keeps the two doc sets apart is <code>_subdirectory: "template"</code> in
 <code>copier.yml</code>: <strong>only files under <code>template/</code> are rendered into a generated
-project.</strong> Anything outside it — including this <code>docs/</code> tree — stays in the
-template repo and is never copied out. When you add documentation, the question
-is simply <em>"does it describe the template, or the product built from it?"</em>:
-template → <code>copier-python-template/docs/</code>, product → <code>template/docs/</code>.</p>
+project.</strong> Anything outside it — including <code>_dev/docs/</code>, the root <code>README.md</code>,
+<code>.github/</code>, <code>.claude/</code>, and <code>copier.yml</code> itself — stays in the template repo
+and is never copied out. When you add documentation, the question is simply
+<em>"does it describe the template, or the product built from it?"</em>:
+template → <code>_dev/docs/</code>, product → <code>template/docs/</code>.</p>
 <h2 id="render-smoketest">Render smoketest<a class="headerlink" href="#render-smoketest" title="Permanent link">&para;</a></h2>
-<p><code>just render-test</code> (from the git root) generates three representative scenarios
-into <code>/tmp</code>, then validates the rendered JSON configs and Docker-Compose files:</p>
-<div class="highlight"><pre><span></span><code>just<span class="w"> </span>render-test
+<p><code>render-test</code> generates three representative scenarios into <code>/tmp</code>, then
+validates the rendered JSON configs and Docker-Compose files:</p>
+<div class="highlight"><pre><span></span><code>just<span class="w"> </span>-f<span class="w"> </span>_dev/justfile<span class="w"> </span>render-test
 </code></pre></div>
+<p>The four scenarios (see the justfile comments for full details):</p>
 <ul>
 <li><strong>Test 1</strong> — Claude-Code-only, no sandbox (minimal path).</li>
 <li><strong>Test 2</strong> — full stack with Langfuse v3 + Crawl4AI (exercises every
   profile-gated <code>:?</code> guard).</li>
 <li><strong>Test 3</strong> — full stack with MLflow (the other Compose Jinja branch).</li>
+<li><strong>Test 4</strong> — all four agents + Context7 + Python 3.14 (covers Codex
+  <code>config.toml</code>, granular OpenCode permissions, Context7-conditional blocks,
+  and 3.14 tooling pins).</li>
+<li><strong>Test 5</strong> — Codex (LiteLLM) + OpenCode (hybrid) + Context7=false + Python
+  3.12 (covers Codex-LiteLLM AGENTS.md text, OpenCode hybrid model block,
+  Context7 else-branch, and 3.12 tooling pins; no sandbox → fast).</li>
 </ul>
 <p>The test runs with <code>--defaults</code>, so a shift in <code>copier.yml</code> defaults moves the
 covered scope with it instead of silently going stale.</p>
 <h2 id="iterating-locally">Iterating locally<a class="headerlink" href="#iterating-locally" title="Permanent link">&para;</a></h2>
 <p>Generate from your working copy (Variant B) to eyeball a real render before
 pushing:</p>
-<div class="highlight"><pre><span></span><code>copier<span class="w"> </span>copy<span class="w"> </span>--trust<span class="w"> </span>../python-project-template/copier-python-template<span class="w"> </span>/tmp/scratch
+<div class="highlight"><pre><span></span><code>copier<span class="w"> </span>copy<span class="w"> </span>--trust<span class="w"> </span>../python-project-template<span class="w"> </span>/tmp/scratch
 </code></pre></div>
 <h2 id="building-this-docs-site">Building this docs site<a class="headerlink" href="#building-this-docs-site" title="Permanent link">&para;</a></h2>
 <p>From the git root:</p>
-<div class="highlight"><pre><span></span><code>just<span class="w"> </span>docs<span class="w">          </span><span class="c1"># serve locally with live reload (http://127.0.0.1:8000)</span>
-just<span class="w"> </span>docs-build<span class="w">    </span><span class="c1"># strict build into copier-python-template/site/</span>
+<div class="highlight"><pre><span></span><code>just<span class="w"> </span>-f<span class="w"> </span>_dev/justfile<span class="w"> </span>docs<span class="w">          </span><span class="c1"># serve locally with live reload (http://127.0.0.1:8000)</span>
+just<span class="w"> </span>-f<span class="w"> </span>_dev/justfile<span class="w"> </span>docs-build<span class="w">    </span><span class="c1"># strict build into _dev/site/</span>
 </code></pre></div>
 <p>Pushing to <code>main</code> triggers <code>.github/workflows/docs.yml</code>, which runs
 <code>mkdocs gh-deploy --strict</code> and publishes this site to GitHub Pages. (The
