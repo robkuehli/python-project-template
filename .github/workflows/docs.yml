@@ -1,6 +1,6 @@
 name: Docs
 
-# Deploys the *template's own* docs site (copier-python-template/docs/) to
+# Deploys the *template's own* docs site (_dev/docs/) to
 # GitHub Pages. The generated project carries its own docs workflow in
 # template/.github/workflows/docs.yml.jinja — different repo, no collision.
 
@@ -8,8 +8,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "copier-python-template/docs/**"
-      - "copier-python-template/mkdocs.yml"
+      - "_dev/docs/**"
+      - "_dev/mkdocs.yml"
       - ".github/workflows/docs.yml"
 
 permissions:
@@ -33,4 +33,4 @@ jobs:
       - name: Build & deploy to GitHub Pages
         run: |
           uv run --with 'mkdocs-material>=9.5' \
-            mkdocs gh-deploy --force --strict -f copier-python-template/mkdocs.yml
+            mkdocs gh-deploy --force --strict -f _dev/mkdocs.yml

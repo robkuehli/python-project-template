@@ -1,0 +1,120 @@
+# _dev justfile — Template-Smoketests + Doku-Rezepte.
+# Das gerenderte Projekt hat sein eigenes justfile (siehe
+# template/justfile.jinja).
+#
+# Invoke from repo root: `just --justfile _dev/justfile <recipe>`.
+# `set working-directory` pins all recipe paths to the repo root regardless of
+# where `just` is invoked from.
+
+set working-directory := ".."
+
+default:
+    @just --list
+
+# --- Template docs site -----------------------------------------------------
+# Docs for the template itself (_dev/docs/). The generated project has its own
+# docs site rendered from template/mkdocs.yml.jinja.
+
+# Serve the template docs locally with live reload.
+docs:
+    uv run --with 'mkdocs-material>=9.5' \
+        mkdocs serve -f _dev/mkdocs.yml
+
+# Strict build into _dev/site/.
+docs-build:
+    uv run --with 'mkdocs-material>=9.5' \
+        mkdocs build --strict -f _dev/mkdocs.yml
+
+# Notes:
+# - Test 1: Claude-Code-only, kein Sandbox (Minimal-Pfad).
+# - Test 2: Full-Stack mit Langfuse v3 + Crawl4AI — aktiviert alle
+#   profil-gegateten `:?`-Guards (SEARXNG_SECRET, CRAWL4AI_API_TOKEN,
+#   LANGFUSE_ENCRYPTION_KEY, LANGFUSE_NEXTAUTH_SECRET).
+# - Test 3: Full-Stack mit MLflow — anderer Compose-Jinja-Branch
+#   (`elif sandbox_observability == 'mlflow'`) als Langfuse und der
+#   eigentliche copier.yml-Default.
+# - Test 4: Alle 4 Agents + Context7 + Python 3.14 — deckt Codex-Config,
+#   granular OpenCode permissions, Context7-conditional, und 3.14-Pins ab.
+# - Test 5: Codex(LiteLLM) + OpenCode(hybrid) + Context7=false + Python 3.12 —
+#   deckt Codex-LiteLLM-AGENTS.md-Text, OpenCode-hybrid-Modellblock,
+#   Context7-Else-Branch und 3.12-Pins ab (kein Sandbox → schnell).
+# - Compose-Check braucht `--profile dev --profile trace` — sonst
+#   filtert Compose alle profil-gegateten Services raus und der Test
+#   wird zum False-Pass (Output `services: {}`).
+# - `--defaults` koppelt den Test an die aktuellen copier.yml-Defaults:
+#   eine Default-Verschiebung verschiebt den Coverage-Scope mit, ohne
+#   dass der Test rot wird.
+
+# Render-Smoketest: fünf Copier-Szenarien + JSON- + Compose-Validierung.
+# Run from repo root: `just -f _dev/justfile render-test`.
+render-test:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    rm -rf /tmp/render-test-1 /tmp/render-test-2 /tmp/render-test-3 /tmp/render-test-4 /tmp/render-test-5
+
+    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+      --data project_name="Test1" \
+      --data coding_agents='["claude_code"]' \
+      --data claude_provider=subscription \
+      --data include_sandbox=false \
+      . /tmp/render-test-1
+
+    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+      --data project_name="Test2" \
+      --data coding_agents='["claude_code","opencode","aider"]' \
+      --data include_sandbox=true \
+      --data sandbox_observability=langfuse \
+      --data include_crawl4ai=true \
+      . /tmp/render-test-2
+
+    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+      --data project_name="Test3" \
+      --data coding_agents='["claude_code","opencode"]' \
+      --data include_sandbox=true \
+      --data sandbox_observability=mlflow \
+      . /tmp/render-test-3
+
+    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+      --data project_name="Test4" \
+      --data coding_agents='["claude_code","codex","opencode","aider"]' \
+      --data include_context7=true \
+      --data python_version="3.14" \
+      --data include_sandbox=false \
+      . /tmp/render-test-4
+
+    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+      --data project_name="Test5" \
+      --data coding_agents='["codex","opencode"]' \
+      --data codex_provider=litellm \
+      --data ollama_subscription=true \
+      --data ollama_tier=hybrid \
+      --data include_context7=false \
+      --data python_version="3.12" \
+      --data include_sandbox=false \
+      . /tmp/render-test-5
+
+    python3 -m json.tool /tmp/render-test-1/.claude/settings.json >/dev/null
+    python3 -m json.tool /tmp/render-test-2/.claude/settings.json >/dev/null
+    python3 -m json.tool /tmp/render-test-2/opencode.json >/dev/null
+    python3 -m json.tool /tmp/render-test-3/.claude/settings.json >/dev/null
+    python3 -m json.tool /tmp/render-test-3/opencode.json >/dev/null
+    python3 -m json.tool /tmp/render-test-4/.claude/settings.json >/dev/null
+    python3 -m json.tool /tmp/render-test-4/opencode.json >/dev/null
+    python3 -m json.tool /tmp/render-test-5/opencode.json >/dev/null
+
+    # Codex config.toml is TOML — validate via python tomllib.
+    python3 -c "import tomllib; tomllib.load(open('/tmp/render-test-4/.codex/config.toml','rb'))"
+    python3 -c "import tomllib; tomllib.load(open('/tmp/render-test-5/.codex/config.toml','rb'))"
+
+    # Aider YAML validate (uv tool run avoids host-Python missing yaml).
+    uv tool run --from pyyaml python3 -c "import yaml; yaml.safe_load(open('/tmp/render-test-4/.aider.conf.yml'))"
+
+    # cd in den Render-Pfad, damit die von `sandbox-init` generierte
+    # .env automatisch aufgegriffen wird und die :?-Guards greifen.
+    (cd /tmp/render-test-2 \
+        && docker compose --profile dev --profile trace config) >/dev/null
+    (cd /tmp/render-test-3 \
+        && docker compose --profile dev --profile trace config) >/dev/null
+
+    echo "render-test passed"

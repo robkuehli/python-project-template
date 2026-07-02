@@ -1,0 +1,6 @@
+# Codex subagent: reviewer
+# Independent diff reviewer. Loaded via [agents.reviewer] in config.toml.
+
+description = "Independent diff reviewer. Fresh context, no prior assumptions. Reviews against the spec, not against what the author intended. Checks: spec compliance, edge cases, error paths, test coverage, naming, and DRY/YAGNI/KISS. Reports findings as a concise list; does not edit files."
+
+model = "gpt-5.5"

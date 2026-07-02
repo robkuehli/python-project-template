@@ -1,0 +1,14 @@
+# Codex subagent: researcher
+# Read-only codebase analyst. Loaded via [agents.researcher] in config.toml.
+
+description = "Read-only codebase analyst. Maps affected files, patterns, and dependencies for a task. Use proactively for wide reconnaissance so the main conversation stays clean. Never writes or modifies files."
+
+# Codex has no Haiku-equivalent model tier; gpt-5.5 keeps recon on the same
+# model as the main thread. Override per-spawn if a cheaper tier is desired.
+model = "gpt-5.5"
+
+# Tools: Codex subagents inherit the tool surface from the parent session
+# unless restricted. This agent stays read-only via AGENTS.md guidance rather
+# than tool-level restriction (Codex lacks a `tools:` allow-list like Claude
+# Code's subagent frontmatter). The `description` makes the read-only intent
+# explicit to the model.

@@ -1,0 +1,86 @@
+{%- set tier = ollama_tier | default('local', true) -%}
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "guidelines/testing.md",
+    "guidelines/documentation.md",
+    "guidelines/changelog.md"
+  ],
+{%- if tier == 'local' %}
+  "model": "ollama/qwen3-coder:30b",
+{%- else %}
+  "model": "ollama/glm-5.2:cloud",
+{%- endif %}
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama ({{ tier }})",
+      "options": {
+        "baseURL": "{{ ollama_base_url }}/v1"
+      },
+{%- if tier == 'local' %}
+      "small_model": "qwen3:4b",
+{%- elif tier == 'cloud' %}
+      "small_model": "gpt-oss:20b-cloud",
+{%- else %}
+      "small_model": "qwen3:4b",
+{%- endif %}
+      "models": {
+{%- if tier == 'local' %}
+        "qwen3-coder:30b": { "name": "Qwen3-Coder 30B-A3B (MoE workhorse, q4_K_M, ~19 GB)" },
+        "qwen3:4b":            { "name": "Qwen3 4B (small_model, ~3 GB, fast util)" },
+        "llama3.2:3b":         { "name": "Llama 3.2 3B (alt small, ~3 GB)" }
+{%- elif tier == 'cloud' %}
+        "glm-5.2:cloud":         { "name": "GLM-5.2 (flagship long-horizon agent, default large)" },
+        "kimi-k2.6:cloud":       { "name": "Kimi K2.6 (long-horizon agentic)" },
+        "kimi-k2.7-code:cloud":  { "name": "Kimi K2.7 Code (coding-focused, K2.6-based)" },
+        "deepseek-v4-pro:cloud": { "name": "DeepSeek V4 Pro (reasoning frontier)" },
+        "gpt-oss:20b-cloud":     { "name": "gpt-oss 20B (small_model, cheap cloud)" }
+{%- else %}
+        "glm-5.2:cloud":         { "name": "GLM-5.2 (cloud, default large)" },
+        "kimi-k2.6:cloud":       { "name": "Kimi K2.6 (cloud, long-horizon agentic)" },
+        "deepseek-v4-pro:cloud": { "name": "DeepSeek V4 Pro (cloud, reasoning frontier)" },
+        "qwen3-coder:30b":   { "name": "Qwen3-Coder 30B-A3B (local fallback, q4_K_M, ~19 GB)" },
+        "qwen3:4b":              { "name": "Qwen3 4B (small_model, local util, ~3 GB)" }
+{%- endif %}
+      }
+    }
+  },
+{%- if include_context7 %}
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true
+    }
+  },
+{%- endif %}
+  "compaction": {
+    "auto": true
+  },
+  "permission": {
+    "bash": {
+      "*": "allow"
+{%- for pattern in shared_deny_bash %},
+      {{ pattern | tojson }}: "deny"
+{%- endfor %}
+{%- for pattern in shared_ask_bash %},
+      {{ pattern | tojson }}: "ask"
+{%- endfor %}
+    },
+    "edit": {
+      "*": "allow"
+{%- for pattern in shared_deny_write %},
+      {{ pattern | tojson }}: "deny"
+{%- endfor %}
+    },
+    "read": {
+      "*": "allow"
+{%- for pattern in shared_deny_read %},
+      {{ pattern | tojson }}: "deny"
+{%- endfor %}
+    },
+    "doom_loop": "ask"
+  }
+}

@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+.venv/
+# MkDocs build output for the template's own docs site.
+_dev/site/

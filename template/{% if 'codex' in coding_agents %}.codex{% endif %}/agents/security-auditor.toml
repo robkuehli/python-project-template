@@ -1,0 +1,6 @@
+# Codex subagent: security-auditor
+# Security-focused reviewer. Loaded via [agents.security-auditor] in config.toml.
+
+description = "Security-focused reviewer. Checks for secrets in code/logs, injection vectors, authz gaps, dependency risk, and MCP/permission drift. Run before merging auth, input-validation, or config changes. Reports findings by severity (critical/high/medium/low); does not edit files."
+
+model = "gpt-5.5"

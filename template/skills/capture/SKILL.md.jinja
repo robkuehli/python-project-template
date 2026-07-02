@@ -1,0 +1,77 @@
+---
+name: capture
+description: >-
+  Promote a learning from private memory into team-shared guidelines or AGENTS.md.
+  Use when a session taught something non-obvious that would help colleagues and
+  future agents. The bridge between private (Auto-Memory / Codex Memories) and
+  team memory (guidelines/*.md, AGENTS.md).
+---
+
+# /capture
+
+Learnings die if they aren't written down before the context window closes. This
+skill is the deliberate step that promotes a one-off observation from private
+memory into a durable, team-shared rule.
+
+## Two memory tiers
+
+- **Private memory** — what the agent accumulates automatically on *your* machine
+  (Claude Code Auto-Memory, Codex `features.memories`). Not shared via git. For
+  personal preferences and one-off corrections.
+- **Team memory** — `guidelines/*.md` and `AGENTS.md`, shared via git. Curated,
+  versioned, reviewed. Applies to everyone working on the project.
+
+`/capture` is the **bridge**: promote a private learning into team memory when
+it would prevent the *same mistake for a colleague*.
+
+## When to trigger
+
+- A correction the user gave you that a colleague (or another agent) would
+  benefit from next time.
+- A non-obvious gotcha discovered while debugging that is project-specific, not
+  generic.
+- A validated decision (the unusual approach you chose worked — and *why*
+  matters for the team).
+
+## When NOT to trigger
+
+- Personal preferences (your shell setup, your sandbox URLs) — leave those in
+  private memory.
+- Generic best practices that are already in `guidelines/` or `AGENTS.md`.
+- Things derivable from reading the current code (file paths, function
+  signatures, recent diffs).
+- "We did X today" — that's task state, not a learning.
+
+## The bar
+
+A capture is worth keeping if it would **prevent the same mistake in a similar
+future situation for someone other than you**. If it's vague, one-off, personal,
+or already documented, drop it (or leave it in private memory).
+
+## Output shape
+
+One terse line, dated, with the *why*:
+
+```markdown
+<!-- YYYY-MM-DD | project | what went wrong -->
+- concrete rule that prevents recurrence
+```
+
+## Where it goes
+
+- **`guidelines/<topic>.md`** — if it's a topical rule (testing, docs, changelog,
+  etc.). This is the default destination.
+- **`AGENTS.md`** — if it's a project-wide convention or guardrail an agent
+  should follow on every task.
+
+## Rules
+
+- One sentence per capture; no essays.
+- Lead with the **rule**, then a **Why:** line, then a **How to apply:** line
+  for non-trivial cases.
+- Never invent a learning that didn't actually happen in this session. 
+  Hallucinated rules are worse than no rules.
+- Deduplicate: if a similar rule already exists, refine the existing entry
+  instead of adding a parallel one.
+- If the learning is personal (only applies to you), leave it in private memory
+  — don't `/capture` it into shared files.
