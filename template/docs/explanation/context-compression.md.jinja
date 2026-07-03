@@ -1,0 +1,130 @@
+# Context compression (optional)
+
+An *optional* layer you can add on top of any agent in this project. The
+template does **not** ship it, configure it, or wire it in — this page explains
+what it is, when it helps, and the risks to weigh before installing it.
+
+For the built-in context discipline the template already prescribes, see
+[Working with agents](working-with-agents.md) (Context hygiene, Token economy).
+
+## What it is
+
+Context compression tools sit between the agent and the LLM provider. They
+rewrite tool outputs, logs, file reads, and conversation history so the prompt
+contains fewer tokens *before* it is sent. The leading example is
+[Headroom](https://github.com/headroomlabs-ai/headroom) (Apache-2.0, local-first):
+a proxy / library / MCP server with content-aware compressors (AST for code,
+structural for JSON, an ML model for prose), a cache-aligner that keeps provider
+KV-caches hitting, and a reversible store (CCR) so the agent can retrieve the
+originals on demand.
+
+## Why the template does not ship it
+
+The template's design principles (Pareto, KISS, Security by default, SPOT)
+govern this call:
+
+- **Pareto over completeness.** Compression is a power-user optimisation, not a
+  need of the 80 % of fresh Python projects the template targets.
+- **KISS.** A proxy plus a CLI plus an ML model download plus extra env vars is
+  real cognitive and install cost — the wrong default for a one-command scaffold.
+- **Security by default.** A compression proxy sees *every* API key and *every*
+  prompt the agent sends. That is a new credential surface, and the principle
+  requires a deny-rule / guard review *before* the surface ships — not something
+  a generated project should inherit by default.
+- **SPOT.** Some compressors (`headroom learn`) write corrections directly into
+  `AGENTS.md` / `CLAUDE.md`. Behaviour rules in this template live exclusively
+  in `AGENTS.md` and `guidelines/*.md`; an outside tool rewriting them violates
+  the single-source-of-truth rule and the "don't edit your own guardrails" rule
+  in `AGENTS.md`.
+
+So: opt-in for the developer who wants it, never the default.
+
+## When it is worth adding
+
+- You run AI coding agents daily and your token bill is the limiting factor.
+- You work across multiple agents (Claude Code, Codex, OpenCode, Aider) and
+  would benefit from a shared cross-agent memory store.
+- You need *reversible* compression — originals retrievable on demand — rather
+  than lossy summary.
+- You are on a metered backend (LiteLLM gateway, per-token API) where 47–92 %
+  fewer input tokens directly lowers cost.
+
+## When to skip it
+
+- You are on a flat-rate subscription (Claude Max, ChatGPT Plus) where tokens
+  are not the constraint.
+- You already use the provider's native compaction and don't need cross-agent
+  memory.
+- You are in a sandboxed environment where a local proxy cannot run.
+
+## Risks to weigh before installing
+
+- **Credential surface.** The proxy terminates TLS to the provider and sees
+  every key and every prompt. Run it locally; never point it at shared keys in
+  CI without scoping. Treat the proxy process like any other credential-bearing
+  tool.
+- **Guardrail edits.** `headroom learn --target AGENTS.md` (and the equivalent
+  for `CLAUDE.md` / `GEMINI.md`) writes to the project's rule files. Prefer the
+  default `CLAUDE.local.md` target (git-ignored, personal) and **do not** point
+  it at the shared `AGENTS.md` — that would silently rewrite the rules every
+  other agent on the project follows.
+- **Tool-config collisions.** `headroom wrap <tool>` injects its own config into
+  the very files the template already configures (`.claude/settings.json`,
+  `opencode.json`, `.aider.conf.yml`, `.codex/config.toml`). Two config sources
+  for the same tool fight each other; reconcile by hand after wrapping.
+- **Install surface.** The Python build backend pulls `rustup` and an ONNX
+  runtime; the ML compressor pulls a model from Hugging Face. In corporate /
+  SSL-inspecting networks this needs `REQUESTS_CA_BUNDLE` / `HF_HUB_OFFLINE=1`
+  or a pre-provisioned runtime. Not a blocker, but a friction point to know
+  about.
+
+## How to install it yourself
+
+This is a sketch, not a template-managed path — verify against the upstream
+docs, which change frequently.
+
+```bash
+# 1 — install (Python CLI; the npm package is SDK-only, no CLI)
+pipx install --python python3.13 "headroom-ai[all]"
+
+# 2 — wrap the agent you use (one at a time)
+headroom wrap claude          # or: codex | opencode | aider | ...
+
+# 3 — check it is routing
+headroom doctor
+headroom dashboard           # live savings, proxy must be running
+```
+
+Undo durable wrapping with `headroom unwrap <tool>`. The proxy must be running
+for compression to take effect; `headroom wrap` starts it for you.
+
+After wrapping, re-open the tool config file the template generated
+(`.claude/settings.json`, `opencode.json`, …) and make sure Headroom's injected
+entries do not duplicate or contradict the template's own backend wiring. When
+in doubt, keep the template's backend URL and model alias; let Headroom own only
+the compression surface.
+
+## Alternatives
+
+- **Native compaction** — Claude Code `/compact`, Codex `/summarise`. Free,
+  built in, lossy. Good enough for many sessions; no extra install.
+- **RTK** / **lean-ctx** — CLI wrappers that rewrite shell-output specifically
+  (`git show --short`, scoped `ls`, summarised installers). Narrower scope than
+  Headroom, lighter weight, not reversible.
+- **Provider compaction** — OpenAI's conversation-history compaction. Provider-
+  native, not portable across agents.
+
+## Rule of thumb
+
+If you are asking "should I add a compression proxy?", first check whether you
+have actually hit the limits the built-in discipline already covers: compact at
+~70 %, clear on topic switch, lazy-load source, cache-friendly system blocks.
+Most projects never need more than that. Reach for a compression tool when the
+token bill says you do — not because the README has impressive percentages.
+
+## Further reading
+
+- Upstream: <https://github.com/headroomlabs-ai/headroom>
+- Docs: <https://headroom-docs.vercel.app/docs>
+- [Working with agents](working-with-agents.md) — the built-in context discipline
+- [Tools & architecture](tools.md) — why the template stack is what it is
