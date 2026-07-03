@@ -96,6 +96,17 @@ Two memory tiers, kept apart deliberately:
 {%- if 'codex' in coding_agents %}
   - Codex: `features.memories = true` (Chronicle); managed by Codex itself.
 {%- endif %}
+{%- if 'opencode' in coding_agents and include_opencode_learning_inbox %}
+  - OpenCode: no native Auto-Memory. The optional Learning-Inbox
+    (`include_opencode_learning_inbox`) replaces the private tier with a
+    git-tracked staging layer — `.opencode/LEARNINGS.md` (canonical, in context
+    via `opencode.json` `instructions:`) and `.opencode/LEARNINGS.inbox.md`
+    (staging, not in context). A SessionEnd plugin (`capture-learnings.ts`)
+    auto-extracts proposals via the configured `small_model` (Scribe role);
+    `/capture review` promotes kept proposals manually. Disable at runtime via
+    `OPENCODE_LEARNINGS_MIN_BYTES=0`. See
+    `docs/explanation/learning-loop.md` for the risk profile.
+{%- endif %}
 
 - **Team memory** — what is shared via git and applies to everyone working on
   the project: `AGENTS.md` and `guidelines/*.md`. Curated, versioned, reviewed.
@@ -305,6 +316,15 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
 - **Memory:** OpenCode has no native dynamic memory. The `instructions` array in
   `opencode.json` loads `AGENTS.md` + `guidelines/*.md` as static project memory
   (team tier). Use `/capture` to promote a learning into `guidelines/*.md`.
+{%- if include_opencode_learning_inbox %}
+  When `include_opencode_learning_inbox` is on, the Learning-Inbox adds a
+  project-local private tier: `.opencode/LEARNINGS.md` (canonical, in context
+  via `instructions:`) + `.opencode/LEARNINGS.inbox.md` (staging, not in
+  context). A SessionEnd plugin (`capture-learnings.ts`) auto-extracts
+  proposals via `small_model`; `/capture review` promotes manually. Disable
+  via `OPENCODE_LEARNINGS_MIN_BYTES=0`. See
+  `docs/explanation/learning-loop.md`.
+{%- endif %}
 - `permission` block in `opencode.json` uses granular object syntax: denies
   destructive bash patterns (`rm -rf`, `sudo`, `curl|bash`), denies writes to
   guardrail files (`shared_deny_write`), denies reads of secrets (`.env`,

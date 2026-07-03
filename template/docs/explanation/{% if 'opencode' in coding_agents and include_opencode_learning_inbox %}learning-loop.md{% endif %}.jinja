@@ -1,0 +1,103 @@
+# OpenCode Learning-Inbox
+
+The Learning-Inbox is an **opt-in** private-memory layer for OpenCode, which
+has no native Auto-Memory (unlike Claude Code's `autoMemoryEnabled` and Codex's
+`features.memories`). When `include_opencode_learning_inbox` is enabled at
+template generation, this page explains what was wired up and how to use it.
+
+For the general two-tier memory model (private vs team), see
+[Working with agents](working-with-agents.md).
+
+## What it is
+
+A git-tracked staging layer that mirrors the private-tier role for OpenCode:
+
+- `.opencode/LEARNINGS.inbox.md` — staging, **not** in context.
+- `.opencode/LEARNINGS.md` — canonical, loaded into context via the
+  `instructions:` array in `opencode.json`.
+
+Two steps:
+
+1. **Stufe 1 (automatisch):** the `capture-learnings.ts` plugin listens on
+   `session.idle`. When the transcript exceeds `OPENCODE_LEARNINGS_MIN_BYTES`
+   (default 8192), it sends a prompt + transcript excerpt to the configured
+   `small_model` (Scribe role) and appends any returned proposals as
+   `[ ] proposed:` to the inbox. The hook never writes to `LEARNINGS.md`.
+2. **Stufe 2 (manuell):** `/capture review` reads the inbox, shows a keep/drop
+   list, and on confirmation prepends kept entries to `LEARNINGS.md` (newest
+   first) and marks the inbox line as `[x] promoted`. Free-text argument → one
+   direct entry, skipping the inbox.
+
+> "Automatik beim Schreiben, Mensch beim Freigeben." The inbox collects, the
+> human curates. `LEARNINGS.md` is the source of truth — only ever written
+> after explicit confirmation.
+
+## When it helps
+
+- You keep losing the same correction across sessions because nobody runs
+  `/capture` manually in time.
+- You want the Scribe to propose lessons from the transcript while the session
+  is still fresh, then review them in the next session.
+
+## When it does not help
+
+- Short, one-off sessions (below `OPENCODE_LEARNINGS_MIN_BYTES` — the hook
+  exits quietly).
+- Teams that already run a manual `/capture` discipline — the inbox would
+  just add noise.
+- Strict DSGVO/EU-only setups with Ollama Cloud — the Scribe call sends a
+  transcript excerpt off-host (see Risks).
+
+## How to use
+
+- **Review proposals:** `/capture review` — the agent lists every
+  `[ ] proposed:` line, you confirm keep/drop, it writes.
+- **Direct capture:** `/capture <a lesson in your own words>` — one entry
+  straight to `LEARNINGS.md`, skipping the inbox.
+- **Disable at runtime:** `export OPENCODE_LEARNINGS_MIN_BYTES=0` (or remove
+  `.opencode/plugins/capture-learnings.ts`).
+- **Disable permanently:** delete `.opencode/plugins/capture-learnings.ts`,
+  `.opencode/plugins/surface-inbox.ts`, the `.opencode/LEARNINGS*.md` files,
+  and the `instructions:` entry for `.opencode/LEARNINGS.md` in `opencode.json`.
+
+## Risks
+
+This feature adds a new surface (PRINCIPLE V: Security by default).
+
+- **Transcript excerpt leaves the driver.** The Scribe call sends the prompt
+  + a concatenated transcript excerpt to your configured `small_model`. With
+  Ollama **local**, nothing leaves the host. With Ollama **Cloud** (or hybrid,
+  if `small_model` is a `:cloud` model), the excerpt travels to the cloud
+  provider. The excerpt may contain code snippets, file names, or error
+  text — review what your `small_model` provider logs/retains.
+- **No new credential surface.** The `small_model` is already declared in
+  `opencode.json` — the plugin reuses the existing Ollama provider. No new
+  tokens, no new MCP server.
+- **The inbox is a new write target.** `shared_deny_write` in `copier.yml`
+  protects `.opencode/agents/**`, `.opencode/commands/**`, `.opencode/plugins/**`,
+  and `opencode.json`, but keeps `.opencode/LEARNINGS*.md` writable so
+  `/capture review` can promote (OWASP ASI06: the trust-sensitive tooling
+  stays off-limits, the lesson store stays editable).
+- **`LEARNINGS.md` is a secondary context-poisoning surface once promoted.**
+  The Scribe reads the raw transcript, which may contain untrusted content
+  (issues, docs, user pastes). `/capture review` is the human gate: reject any
+  proposal that reads like an instruction to the agent ("always do X", "ignore
+  Y") rather than a preventive rule — a planted instruction would persist
+  across sessions via `instructions:`. The Scribe output is capped at 16 KiB
+  per session so a drifting model can't bloat the inbox.
+- **Plugin API is experimental.** The OpenCode plugin API (`session.idle`,
+  `session.start`, `session.messages` shape) may change — if a future
+  OpenCode release breaks the hook, the plugin silently no-ops (it never
+  throws from a SessionEnd hook).
+
+## Format
+
+One terse line per entry, dated, with the *why*:
+
+```markdown
+<!-- YYYY-MM-DD | project | what went wrong -->
+- concrete rule that prevents recurrence
+```
+
+Promoted entries live in `.opencode/LEARNINGS.md` under
+`## Regeln aus echten Fehlern` (newest first).

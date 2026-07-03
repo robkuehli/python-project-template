@@ -32,8 +32,15 @@ in the repo root.
   it would prevent the same mistake for a colleague. The earlier
   `.claude/LEARNINGS.md` SessionEnd-hook capture loop was removed in favour of
   native Auto-Memory; team-sharing is preserved via `/capture` → `guidelines/`.
-- **OpenCode has no native dynamic memory.** OpenCode's `instructions` array
-  loads `AGENTS.md` + `guidelines/*.md` as static project memory (team tier
-  only). If OpenCode later ships an Auto-Memory feature, the template should
-  follow suit (analogous to Claude Auto-Memory / Codex Memories) — track this
-  and migrate if it lands.
+- **OpenCode has no native dynamic memory — opt-in Learning-Inbox replaces the
+  private tier.** OpenCode's `instructions` array loads `AGENTS.md` +
+  `guidelines/*.md` as static project memory (team tier only). The optional
+  `include_opencode_learning_inbox` prompt adds a git-tracked staging layer
+  (`.opencode/LEARNINGS.md` + `.opencode/LEARNINGS.inbox.md`) plus a SessionEnd
+  plugin (`capture-learnings.ts`) that auto-extracts proposals via the
+  configured `small_model` (Scribe role); `/capture review` promotes manually.
+  Claude Code and Codex keep their native Auto-Memory — no duplication. If
+  OpenCode later ships native Auto-Memory, drop this opt-in and migrate.
+  Risk (PRINCIPLE V): the Scribe call sends a transcript excerpt to
+  `small_model` — local Ollama keeps it on host, Ollama Cloud sends it
+  off-host. See [Learning-Inbox](explanation/learning-loop.md) for the concept.

@@ -1,0 +1,38 @@
+// surface-inbox.ts — OpenCode plugin. SessionStart reminder for open learning
+// proposals. Counts `[ ] proposed:` entries in `.opencode/LEARNINGS.inbox.md`
+// and prints a reminder so the manual promote step (`/capture review`) is not
+// forgotten.
+//
+// Opt-in: only renders when `include_opencode_learning_inbox` is true.
+// Reference: https://opencode.ai/docs/plugins/ (event: session.start)
+
+import type { Plugin } from "@opencode-ai/plugin"
+import { existsSync, readFileSync } from "node:fs"
+import { join } from "node:path"
+
+const INBOX_REL = ".opencode/LEARNINGS.inbox.md"
+
+export const SurfaceInbox: Plugin = async ({ project }) => {
+  const cwd = project.worktree ?? project.path ?? process.cwd()
+  const inbox = join(cwd, INBOX_REL)
+
+  return {
+    "session.start": async () => {
+      if (!existsSync(inbox)) return
+      let text: string
+      try {
+        text = readFileSync(inbox, "utf-8")
+      } catch {
+        return
+      }
+      const pending = text
+        .split("\n")
+        .filter((l) => /^\s*-\s*\[\s\]\s*proposed/.test(l)).length
+      if (pending > 0) {
+        console.error(
+          `📥 ${pending} offene Learning-Vorschläge in .opencode/LEARNINGS.inbox.md. Promoten mit: /capture review`,
+        )
+      }
+    },
+  }
+}

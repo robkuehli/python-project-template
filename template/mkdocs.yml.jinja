@@ -39,6 +39,9 @@ nav:
       - Developer workflow: explanation/developer-workflow.md
       - Working with agents: explanation/working-with-agents.md
       - Context compression (optional): explanation/context-compression.md
+{%- if 'opencode' in coding_agents and include_opencode_learning_inbox %}
+      - OpenCode Learning-Inbox (optional): explanation/learning-loop.md
+{%- endif %}
 {%- if include_sandbox %}
       - The agent sandbox: explanation/sandbox.md
 {%- endif %}

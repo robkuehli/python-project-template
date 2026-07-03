@@ -1,0 +1,125 @@
+// capture-learnings.ts — OpenCode plugin. SessionEnd learning-extraction
+// (Scribe role). OpenCode has no native Auto-Memory (unlike Claude Code's
+// `autoMemoryEnabled` and Codex's `features.memories`). This plugin is the
+// Stufe-1 "propose" step: on session.idle it extracts 0..N actionable
+// learning proposals from the transcript via the configured `small_model`
+// and appends them to `.opencode/LEARNINGS.inbox.md` as `[ ] proposed:`.
+//
+// Stufe-2 "promote" is manual: `/capture review` moves kept proposals into
+// `.opencode/LEARNINGS.md`. Automatik beim Schreiben, Mensch beim Freigeben.
+//
+// Opt-in: the plugin file only renders when `include_opencode_learning_inbox`
+// is true. Disable at runtime via `OPENCODE_LEARNINGS_MIN_BYTES=0`, or remove
+// the file.
+//
+// PRINCIPLE V (Security by default): the Scribe call sends a transcript
+// excerpt to the configured `small_model` (Ollama local = no data leaves
+// the host; Ollama Cloud = transcript excerpt leaves the host). The
+// `small_model` is already declared in `opencode.json` — no new credential
+// surface is introduced. The inbox file is append-only here; the canonical
+// `LEARNINGS.md` is never written from this hook.
+// See docs/explanation/learning-loop.md for the risk profile.
+//
+// Reference: https://opencode.ai/docs/plugins/ (event: session.idle)
+
+import type { Plugin } from "@opencode-ai/plugin"
+import { execSync } from "node:child_process"
+import { existsSync, appendFileSync } from "node:fs"
+import { join } from "node:path"
+
+const INBOX_REL = ".opencode/LEARNINGS.inbox.md"
+const MIN_BYTES_DEFAULT = 8192
+
+export const CaptureLearnings: Plugin = async ({ project }) => {
+  const cwd = project.worktree ?? project.path ?? process.cwd()
+  const inbox = join(cwd, INBOX_REL)
+
+  return {
+    "session.idle": async ({ session }) => {
+      // Skip if inbox disabled or missing.
+      if (!existsSync(inbox)) return
+      // Respect explicit opt-out.
+      const minBytesRaw = process.env.OPENCODE_LEARNINGS_MIN_BYTES
+      const minBytes =
+        minBytesRaw === undefined ? MIN_BYTES_DEFAULT : Number.parseInt(minBytesRaw, 10)
+      if (Number.isNaN(minBytes) || minBytes <= 0) return
+
+      // Pull the transcript text from the session messages. OpenCode exposes
+      // the message log via session.messages; we concatenate all parts. If the
+      // shape is unavailable, exit quietly — never throw from a SessionEnd hook.
+      const messages = (
+        session as {
+          messages?: Array<{ role?: string; content?: string | Array<{ text?: string }> }>
+        }
+      ).messages
+      if (!Array.isArray(messages)) return
+      const transcript = messages
+        .map((m) => {
+          const c = m.content
+          if (typeof c === "string") return c
+          if (Array.isArray(c)) return c.map((p) => p?.text ?? "").join("\n")
+          return ""
+        })
+        .join("\n\n")
+      if (Buffer.byteLength(transcript, "utf-8") < minBytes) return
+
+      const project_name = basename(cwd)
+      const today = new Date().toISOString().slice(0, 10)
+
+      const prompt = [
+        "Du bist die Scribe-Rolle. Lies das folgende Session-Transkript und extrahiere",
+        "0..N HANDLUNGSRELEVANTE Learnings nach diesen Regeln:",
+        '- Eine Zeile pro Learning, Form: "Wenn X, dann Y prüfen, weil Z".',
+        '- KEIN Learning, das nur einmalig zutrifft. KEIN "sei vorsichtig mit ...".',
+        "- Nur was den GLEICHEN Fehler in einer ähnlichen Situation künftig verhindert.",
+        "- Wenn es nichts Substanzielles gibt: gib NICHTS aus (leere Antwort).",
+        "",
+        "Format pro Eintrag (exakt, zwei Zeilen):",
+        `<!-- ${today} | ${project_name} | kurzer kontext -->`,
+        "- [ ] proposed: konkrete regel",
+        "",
+        "Transkript folgt.",
+        "",
+        transcript,
+      ].join("\n")
+
+      // Scribe call via `opencode run` (non-interactive, uses the configured
+      // small_model through the project's Ollama provider). Failures are
+      // swallowed — a capture hook must never block the session from ending.
+      let suggestions = ""
+      try {
+        suggestions = execSync("opencode run --model small_model", {
+          cwd,
+          encoding: "utf-8",
+          input: prompt,
+          stdio: ["pipe", "pipe", "ignore"],
+          timeout: 60_000,
+        })
+      } catch {
+        return
+      }
+
+      const trimmed = suggestions.trim()
+      if (!trimmed) return
+
+      // Cap the appended size so a drifting Scribe can't bloat the git-tracked
+      // inbox without limit. 16 KiB is plenty for 0..N one-line proposals.
+      const MAX_APPEND = 16 * 1024
+      const bounded = trimmed.length > MAX_APPEND ? trimmed.slice(0, MAX_APPEND) : trimmed
+
+      // Append proposals to the inbox. Never touch LEARNINGS.md from here —
+      // the promote step is manual (`/capture review`). Wrap the write so a
+      // disk-full / EACCES never throws from a SessionEnd hook.
+      try {
+        appendFileSync(inbox, `\n${bounded}\n`)
+      } catch {
+        return
+      }
+    },
+  }
+}
+
+function basename(p: string): string {
+  const parts = p.replace(/\/$/, "").split("/")
+  return parts[parts.length - 1] || p
+}

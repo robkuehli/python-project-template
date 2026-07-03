@@ -3,8 +3,8 @@ name: capture
 description: >-
   Promote a learning from private memory into team-shared guidelines or AGENTS.md.
   Use when a session taught something non-obvious that would help colleagues and
-  future agents. The bridge between private (Auto-Memory / Codex Memories) and
-  team memory (guidelines/*.md, AGENTS.md).
+  future agents. The bridge between private (Auto-Memory / Codex Memories /
+  OpenCode Learning-Inbox) and team memory (guidelines/*.md, AGENTS.md).
 ---
 
 # /capture
@@ -18,11 +18,33 @@ memory into a durable, team-shared rule.
 - **Private memory** — what the agent accumulates automatically on *your* machine
   (Claude Code Auto-Memory, Codex `features.memories`). Not shared via git. For
   personal preferences and one-off corrections.
+{%- if 'opencode' in coding_agents and include_opencode_learning_inbox %}
+  - **OpenCode** has no native Auto-Memory. When `include_opencode_learning_inbox`
+    is enabled, a git-tracked staging layer replaces the private tier:
+    `.opencode/LEARNINGS.md` (canonical, in context via `opencode.json`
+    `instructions:`) and `.opencode/LEARNINGS.inbox.md` (staging, not in
+    context). A SessionEnd plugin (`capture-learnings.ts`) auto-extracts
+    proposals via the configured `small_model` (Scribe role); `/capture review`
+    promotes kept proposals manually. "Automatik beim Schreiben, Mensch beim
+    Freigeben." See `docs/explanation/learning-loop.md` for the risk profile.
+{%- endif %}
 - **Team memory** — `guidelines/*.md` and `AGENTS.md`, shared via git. Curated,
   versioned, reviewed. Applies to everyone working on the project.
 
 `/capture` is the **bridge**: promote a private learning into team memory when
 it would prevent the *same mistake for a colleague*.
+{%- if 'opencode' in coding_agents and include_opencode_learning_inbox %}
+
+## OpenCode: `/capture review`
+
+When invoked with `review` (or no argument), the OpenCode variant reads
+`.opencode/LEARNINGS.inbox.md`, lists every `[ ] proposed:` line, and asks you
+to confirm the keep/drop list before promoting. On confirmation it prepends
+kept entries to `.opencode/LEARNINGS.md` (newest first) and marks the inbox
+line as `[x] promoted`. Free-text argument → one direct entry into
+`LEARNINGS.md`, skipping the inbox. Never invent a lesson that did not occur
+in this session or the inbox.
+{%- endif %}
 
 ## When to trigger
 

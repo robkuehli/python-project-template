@@ -199,6 +199,29 @@ ollama_tier:
   default: "{% if ollama_subscription %}hybrid{% else %}local{% endif %}"
   when: "{{ 'opencode' in coding_agents and ollama_subscription }}"
 
+# --- OpenCode Learning-Inbox (opt-in) --------------------------------------
+# OpenCode has no native Auto-Memory (unlike Claude Code's `autoMemoryEnabled`
+# and Codex's `features.memories`). This option adds a git-tracked staging
+# layer: a SessionEnd plugin extracts learning proposals from the transcript
+# via the configured `small_model` (Scribe role), drops them into
+# `.opencode/LEARNINGS.inbox.md` (staging, not in context), and a
+# `/capture review` command promotes kept proposals into `.opencode/LEARNINGS.md`
+# (in context via `opencode.json` `instructions:`). Automatik beim Schreiben,
+# Mensch beim Freigeben. Opt-in per PRINCIPLE I (Pareto) — only projects that
+# want a learning loop for OpenCode enable it. See
+# _dev/docs/explanation/learning-loop.md for the concept and risks.
+include_opencode_learning_inbox:
+  type: bool
+  help: >-
+    Enable the OpenCode Learning-Inbox? OpenCode has no native Auto-Memory
+    (unlike Claude Code / Codex). This adds a git-tracked staging layer:
+    a SessionEnd plugin extracts learning proposals from the transcript via
+    the configured `small_model` (Scribe), `/capture review` promotes kept
+    proposals manually. Opt-in — adds a plugin that sends a transcript
+    excerpt to your `small_model` (PRINCIPLE V: new surface, documented).
+  default: false
+  when: "{{ 'opencode' in coding_agents }}"
+
 # --- Context7 MCP (shared, opt-in) -----------------------------------------
 # Context7 fetches current library docs into the model context — solves the
 # stale-training-data problem for Python libs. Opt-in because it is an
@@ -393,8 +416,9 @@ shared_deny_read:
 # in-jinja by `settings.json.jinja` (already covered by `shared_deny_read`).
 #
 # Granularity note: `.claude/**`, `.codex/**`, `.opencode/**` are NOT blanket-
-# denied because `/capture review` legitimately writes to `.claude/LEARNINGS.md`
-# and the inbox. Only the structural/trust-sensitive subpaths are protected.
+# denied because `/capture review` legitimately writes to `.claude/LEARNINGS.md`,
+# `.opencode/LEARNINGS.md`, and the matching inboxes. Only the
+# structural/trust-sensitive subpaths are protected.
 shared_deny_write:
   type: yaml
   when: false
@@ -407,9 +431,14 @@ shared_deny_write:
     - ".claude/commands/**"
     - ".claude/scripts/**"
     - ".claude/plugins/**"
-    # Codex / OpenCode / Aider config.
+    # OpenCode: trust-sensitive subpaths only — LEARNINGS*.md stays writable
+    # (so `/capture review` can promote into .opencode/LEARNINGS.md).
+    - ".opencode/agents/**"
+    - ".opencode/commands/**"
+    - ".opencode/plugins/**"
+    - "opencode.json"
+    # Codex / Aider config.
     - ".codex/**"
-    - ".opencode/**"
     - ".aider.conf.yml"
     # Top-level agent guidance and project-wide rules.
     - "AGENTS.md"

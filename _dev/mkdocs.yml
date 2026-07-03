@@ -36,6 +36,8 @@ nav:
   - Example setups: examples.md
   - Updating projects: updating.md
   - Developing the template: developing.md
+  - Explanation:
+      - Learning-Inbox (OpenCode, opt-in): explanation/learning-loop.md
   - Decisions: decisions.md
 
 markdown_extensions:

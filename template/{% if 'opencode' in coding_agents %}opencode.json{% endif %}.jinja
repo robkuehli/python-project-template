@@ -6,6 +6,9 @@
     "guidelines/testing.md",
     "guidelines/documentation.md",
     "guidelines/changelog.md"
+{%- if include_opencode_learning_inbox %},
+    ".opencode/LEARNINGS.md"
+{%- endif %}
   ],
 {%- if tier == 'local' %}
   "model": "ollama/qwen3-coder:30b",

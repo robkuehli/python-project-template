@@ -109,7 +109,7 @@ shared project rules:
 |---|---|---|---|
 | Claude Code | Auto-Memory (`~/.claude/projects/<project>/memory/`), `/memory` to inspect/edit | `guidelines/*.md`, `AGENTS.md` | `/capture` skill (manual promote) |
 | Codex | `features.memories` (Chronicle), managed by Codex | `guidelines/*.md`, `AGENTS.md` | `/capture` skill (manual promote) |
-| OpenCode | none (no native dynamic memory) | `instructions` array loads `guidelines/*.md` + `AGENTS.md` | `/capture` skill (manual promote) |
+| OpenCode |{% if 'opencode' in coding_agents and include_opencode_learning_inbox %} Learning-Inbox (`.opencode/LEARNINGS.md` + `.opencode/LEARNINGS.inbox.md`, git-tracked; SessionEnd `capture-learnings.ts` plugin auto-extracts via `small_model`){% else %} none (no native dynamic memory){% endif %} | `instructions` array loads `guidelines/*.md` + `AGENTS.md` | `/capture` skill{% if 'opencode' in coding_agents and include_opencode_learning_inbox %} + `/capture review` (manual promote from inbox){% endif %} |
 | Aider | none (no native dynamic memory) | `read:` array loads `guidelines/*.md` + `AGENTS.md` | `/capture` skill (manual promote) |
 
 **The discipline** — when the agent makes an avoidable mistake, capture the
@@ -118,11 +118,34 @@ correction **once** as a durable rule. The decision is:
 - Would this rule apply to **a colleague** too? → `/capture` into
   `guidelines/<topic>.md` or `AGENTS.md` (team tier, git-shared).
 - Is it a **personal preference** (your shell, your sandbox URLs)? → leave it in
-  private memory (Auto-Memory / Codex Memories). Don't pollute shared rules.
+  private memory (Auto-Memory / Codex Memories{% if 'opencode' in coding_agents and include_opencode_learning_inbox %} / OpenCode Learning-Inbox{% endif %}). Don't pollute shared rules.
 
 The rule is worth keeping only if it would prevent the **same mistake in a similar
 future situation**. Vague warnings, one-offs, and duplicates of existing rules go
 in the bin.
+{%- if 'opencode' in coding_agents and include_opencode_learning_inbox %}
+
+### OpenCode Learning-Inbox (when enabled)
+
+OpenCode has no native Auto-Memory. When `include_opencode_learning_inbox` is
+set, the template adds a git-tracked staging layer that mirrors the
+private-tier role:
+
+- `.opencode/LEARNINGS.inbox.md` — staging, **not** in context. A SessionEnd
+  plugin (`capture-learnings.ts`) auto-extracts 0..N learning proposals from
+  the session transcript via the configured `small_model` (Scribe role) and
+  appends them as `[ ] proposed:`. The hook never writes to `LEARNINGS.md`.
+- `.opencode/LEARNINGS.md` — canonical, in context via the `instructions:`
+  array in `opencode.json`. `/capture review` reads the inbox, shows a
+  keep/drop list, and on confirmation prepends kept entries (newest first)
+  and marks the inbox line as `[x] promoted`.
+
+"Automatik beim Schreiben, Mensch beim Freigeben." Disable at runtime via
+`OPENCODE_LEARNINGS_MIN_BYTES=0` (or remove the plugin file). **Risk:** the
+Scribe call sends a transcript excerpt to your `small_model` — local Ollama
+keeps it on the host, Ollama Cloud sends it off-host. See
+[`learning-loop.md`](./learning-loop.md) for details.
+{%- endif %}
 
 ## Subagents (when forking context helps)
 
