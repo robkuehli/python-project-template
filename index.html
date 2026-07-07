@@ -611,11 +611,11 @@ skills, API reference) live in that project's own MkDocs site.</p>
   security-auditor), Verify-on-Stop hooks/plugins, granular permissions (where
   the tool supports them), and the Context7 MCP server (opt-in via
   <code>include_context7</code>).</li>
-<li>A <strong><code>guidelines/</code></strong> folder (testing / documentation / changelog standards) and
+<li>A <strong><code>agent-guidelines/</code></strong> folder (testing / documentation / changelog standards) and
   a <strong><code>skills/</code></strong> folder with the 9 workflow skills (<code>/explore</code>, <code>/spec</code>, <code>/plan</code>,
   <code>/test</code>, <code>/delegate</code>, <code>/review</code>, <code>/verify</code>, <code>/debug</code>, <code>/capture</code>) in
   <code>SKILL.md</code> format. <code>/capture</code> promotes a private learning into team-shared
-  <code>guidelines/*.md</code> or <code>AGENTS.md</code>.</li>
+  <code>agent-guidelines/*.md</code> or <code>AGENTS.md</code>.</li>
 <li>An optional <strong>Docker-Compose sandbox</strong> that bind-mounts the repo into an
   isolated container so agents can't reach host secrets, with optional SearXNG,
   Crawl4AI, and LLM observability (MLflow / Langfuse).</li>
