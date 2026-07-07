@@ -51,7 +51,7 @@ render-test:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    rm -rf /tmp/render-test-1 /tmp/render-test-2 /tmp/render-test-3 /tmp/render-test-4 /tmp/render-test-5
+    rm -rf /tmp/render-test-1 /tmp/render-test-2 /tmp/render-test-3 /tmp/render-test-4 /tmp/render-test-5 /tmp/render-test-6 /tmp/render-test-7
 
     uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
       --data project_name="Test1" \
@@ -94,6 +94,24 @@ render-test:
       --data include_sandbox=false \
       . /tmp/render-test-5
 
+    # Test 6: GitLab CI — .gitlab-ci.yml present, .github/workflows absent.
+    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+      --data project_name="Test6" \
+      --data coding_agents='["claude_code"]' \
+      --data claude_provider=subscription \
+      --data include_sandbox=false \
+      --data cicd_provider=gitlab_ci \
+      . /tmp/render-test-6
+
+    # Test 7: No CI/CD — neither provider generates files.
+    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+      --data project_name="Test7" \
+      --data coding_agents='["claude_code"]' \
+      --data claude_provider=subscription \
+      --data include_sandbox=false \
+      --data cicd_provider=none \
+      . /tmp/render-test-7
+
     python3 -m json.tool /tmp/render-test-1/.claude/settings.json >/dev/null
     python3 -m json.tool /tmp/render-test-2/.claude/settings.json >/dev/null
     python3 -m json.tool /tmp/render-test-2/opencode.json >/dev/null
@@ -116,5 +134,28 @@ render-test:
         && docker compose --profile dev --profile trace config) >/dev/null
     (cd /tmp/render-test-3 \
         && docker compose --profile dev --profile trace config) >/dev/null
+
+    # Test 6: GitLab CI file present + valid, GitHub Actions absent.
+    python3 -m json.tool /tmp/render-test-6/.claude/settings.json >/dev/null
+    test -f /tmp/render-test-6/.gitlab-ci.yml \
+        || { echo "FAIL: .gitlab-ci.yml missing in render-test-6"; exit 1; }
+    test ! -f /tmp/render-test-6/.github/workflows/ci.yml \
+        || { echo "FAIL: ci.yml must not exist in render-test-6"; exit 1; }
+    uv tool run --from pyyaml python3 -c "import yaml; d=yaml.safe_load(open('/tmp/render-test-6/.gitlab-ci.yml')); assert set(d.get('stages',[]))=={'lint','test','build','push','deploy'}, d.get('stages')"
+
+    # Test 7: no CI files at all.
+    python3 -m json.tool /tmp/render-test-7/.claude/settings.json >/dev/null
+    test ! -f /tmp/render-test-7/.gitlab-ci.yml \
+        || { echo "FAIL: .gitlab-ci.yml must not exist in render-test-7"; exit 1; }
+    test ! -f /tmp/render-test-7/.github/workflows/ci.yml \
+        || { echo "FAIL: ci.yml must not exist in render-test-7"; exit 1; }
+    test ! -f /tmp/render-test-7/.github/dependabot.yml \
+        || { echo "FAIL: dependabot.yml must not exist in render-test-7"; exit 1; }
+
+    # Regression: Tests 1-5 still get GitHub Actions (default provider).
+    test -f /tmp/render-test-1/.github/workflows/ci.yml \
+        || { echo "FAIL: ci.yml missing in render-test-1 (github_actions default regression)"; exit 1; }
+    test -f /tmp/render-test-1/.github/dependabot.yml \
+        || { echo "FAIL: dependabot.yml missing in render-test-1"; exit 1; }
 
     echo "render-test passed"

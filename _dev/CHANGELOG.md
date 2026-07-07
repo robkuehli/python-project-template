@@ -13,6 +13,20 @@ their own `CHANGELOG.md` (see `template/CHANGELOG.md.jinja`).
 
 ### Added
 
+- **Optional CI/CD** via new Copier prompt `cicd_provider` (default
+  `github_actions`, so existing renders are unchanged). Three choices:
+  `github_actions` (the previous always-on `.github/workflows/ci.yml`,
+  `docs.yml`, `dependabot.yml`), `gitlab_ci` (a new commented
+  `.gitlab-ci.yml` baseline with `lint → test → build → push → deploy`
+  stages), or `none` (no CI files). The GitLab pipeline gates
+  `build`/`push`/`deploy` on protected refs (`$CI_COMMIT_REF_PROTECTED`),
+  tags every image with the immutable commit SHA as a rollback anchor, and
+  keeps `deploy` manual. The GitHub Actions files plus
+  `pull_request_template.md` now render only for `github_actions` (conditional
+  filenames); `dependabot.yml` and `pull_request_template.md` gained a
+  `.jinja` suffix to support that. `shared_deny_write` and `AGENTS.md`'s
+  guardrail list are now CI-provider-aware.
+
 - ADR support (`include_adrs: bool, default: false`): `/create-adr` skill
   (`template/skills/{% if include_adrs %}create-adr{% endif %}/SKILL.md`),
   ADR template (`template/docs/{% if include_adrs %}templates{% endif %}/adr-template.md`),

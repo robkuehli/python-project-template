@@ -46,6 +46,12 @@ of the choice. Each selected agent unlocks a backend prompt.
 | `include_crawl4ai` | bool | `false` | **conditional** (`include_sandbox`). Playwright + Chromium sidecar for JS-rendered fetches (~1.4 GB image). |
 | `sandbox_auto_init` | bool | `true` | **conditional** (`include_sandbox`). Auto-generate sandbox secrets into a git-ignored `.env` now (needs `--trust`); otherwise run `just sandbox-init` yourself. |
 
+## CI/CD
+
+| Prompt | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `cicd_provider` | choice | `github_actions` | **GitHub Actions**: `.github/workflows/ci.yml` (lint + test), `docs.yml` (MkDocs → GitHub Pages), `dependabot.yml`. **GitLab CI**: `.gitlab-ci.yml` with lint → test → build → push → deploy; build/push/deploy run on protected refs only, images tagged by commit SHA for rollback, deploy is manual. **None**: no CI/CD files. |
+
 ## Spec-Driven Development
 
 | Prompt | Type | Default | Notes |

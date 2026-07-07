@@ -291,6 +291,22 @@ sandbox_auto_init:
   when: "{{ include_sandbox }}"
 
 # ---------------------------------------------------------------------------
+# CI/CD
+# ---------------------------------------------------------------------------
+cicd_provider:
+  type: str
+  help: >-
+    Which CI/CD provider should this project use? GitHub Actions generates
+    `.github/workflows/ci.yml` (lint + test) and `docs.yml` (MkDocs → GitHub
+    Pages) plus Dependabot. GitLab CI generates `.gitlab-ci.yml` with lint,
+    test, build, push, and deploy stages. None skips all CI files.
+  choices:
+    "GitHub Actions (ci.yml + docs.yml + Dependabot)": "github_actions"
+    "GitLab CI (.gitlab-ci.yml — lint / test / build / push / deploy)": "gitlab_ci"
+    "None — no CI/CD files": "none"
+  default: "github_actions"
+
+# ---------------------------------------------------------------------------
 # Spec-Driven Development
 # ---------------------------------------------------------------------------
 sdd_framework:
@@ -407,7 +423,7 @@ shared_deny_read:
 shared_deny_write:
   type: yaml
   when: false
-  default:
+  default: |
     # Claude Code: trust-sensitive subpaths only — LEARNINGS*.md stays writable.
     - ".claude/settings.json"
     - ".claude/settings.local.json"
@@ -423,12 +439,17 @@ shared_deny_write:
     # Top-level agent guidance and project-wide rules.
     - "AGENTS.md"
     - "CLAUDE.md"
-    # Sandbox + CI definitions.
+    # Sandbox + pre-commit definitions.
     - "docker/**"
     - "docker-compose.yml"
-    - ".github/**"
     - ".pre-commit-config.yaml"
     - ".gitleaks.toml"
+    # CI/CD definitions — protect whichever provider was chosen.
+    {% if cicd_provider == 'github_actions' -%}
+    - ".github/**"
+    {% elif cicd_provider == 'gitlab_ci' -%}
+    - ".gitlab-ci.yml"
+    {% endif -%}
     # Build/task config — editing these is a human review decision.
     - "pyproject.toml"
     - "justfile"

@@ -124,7 +124,7 @@ Two memory tiers, kept apart deliberately:
 - **Don't edit your own guardrails.** Files that define what the agent may do
   (`AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`, `.claude/agents/`,
   `.claude/hooks/`, `.claude/commands/`, `.codex/`, `.opencode/`, `docker/`,
-  `.github/`, `pyproject.toml`, `justfile`) are off-limits unless the user
+  {% if cicd_provider == 'github_actions' %}`.github/`{% elif cicd_provider == 'gitlab_ci' %}`.gitlab-ci.yml`{% endif %}{% if cicd_provider != 'none' %}, {% endif %}`pyproject.toml`, `justfile`) are off-limits unless the user
   asked for that specific change. OWASP ASI06 (Memory & Context Poisoning):
   these are the leverage points a hijacked agent goes for first.
 - **MCP servers are supply chain.** Their config is versioned and reviewed like
