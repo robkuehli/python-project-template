@@ -9,6 +9,30 @@ Scope: this file tracks the **template itself** — the Copier scaffold, its
 questions, hooks, and the rendered files. Generated downstream projects keep
 their own `CHANGELOG.md` (see `template/CHANGELOG.md.jinja`).
 
+## [Unreleased]
+
+### Added
+
+- ADR support (`include_adrs: bool, default: false`): `/create-adr` skill
+  (`template/skills/{% if include_adrs %}create-adr{% endif %}/SKILL.md`),
+  ADR template (`template/docs/{% if include_adrs %}templates{% endif %}/adr-template.md`),
+  empty `docs/adr/` directory, and two agent-guidelines files
+  (`template/agent-guidelines/adr-guidelines.md`,
+  `template/agent-guidelines/repo-adr-conventions.md.jinja`). The conventions file
+  injects `author_name` as the default ADR owner. All ADR files are gated behind
+  `include_adrs`; a proactive `/create-adr` hint is injected into `AGENTS.md` when
+  enabled.
+
+### Changed
+
+- Renamed `guidelines/` → `agent-guidelines/` in all generated projects: the
+  top-level directory (`template/guidelines/` → `template/agent-guidelines/`),
+  the MkDocs stub directory (`template/docs/guidelines/` →
+  `template/docs/agent-guidelines/`), the nav section header (`Guidelines` →
+  `Agent Guidelines`), and all path references across AGENTS.md.jinja, skills,
+  explanation docs, tool configs (`.aider.conf.yml.jinja`, `opencode.json.jinja`),
+  and this repo's own `AGENTS.md`, `README.md`, and `_dev/` docs.
+
 ## [1.0.0] - 2026-06-03
 
 ### Added

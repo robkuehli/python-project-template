@@ -42,7 +42,7 @@ not on a project generated from it. Generated projects have their own
   a rejection reason.
 - **KISS** — one profile, one default model per tool, one quality gate. If a
   setting can be inlined to a sensible default, it is.
-- **SPOT** — behaviour rules live in `AGENTS.md` and `guidelines/*.md`; tool
+- **SPOT** — behaviour rules live in `AGENTS.md` and `agent-guidelines/*.md`; tool
   configs (`.claude/settings.json`, `opencode.json`, `.aider.conf.yml`,
   `.codex/config.toml`) carry only runtime glue. No rule in two places.
 - **Quality gates non-negotiable** — `--no-verify` is the hardest line. If a

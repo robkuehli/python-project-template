@@ -81,7 +81,7 @@ claude            # picks up the token; base URL comes from .claude/settings.jso
 codex             # picks up OPENAI_BASE_URL/API_KEY
 ```
 
-Both tools read the same `AGENTS.md` + `guidelines/` + `skills/`. Use Claude
+Both tools read the same `AGENTS.md` + `agent-guidelines/` + `skills/`. Use Claude
 Code in Plan Mode for design discussions, hand the resulting plan to Codex
 for execution — or vice versa.
 

@@ -335,6 +335,15 @@ sql_dialect:
   default: "ansi"
   when: "{{ include_sql }}"
 
+include_adrs:
+  type: bool
+  help: >-
+    Generate ADR (Architecture Decision Record) support? Adds a `/create-adr`
+    skill, an ADR template, an empty `docs/adr/` directory, and ADR guidelines
+    in `agent-guidelines/`. Useful for projects with lasting architectural
+    decisions; optional for simple libraries or scripts.
+  default: false
+
 license:
   type: str
   help: "License (choose 'Proprietary' for a private/closed project)"

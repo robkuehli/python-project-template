@@ -27,13 +27,13 @@ in the repo root.
   *private* tier is what the agent accumulates on your machine automatically
   (Claude Code Auto-Memory, Codex `features.memories`) — not shared via git, for
   personal preferences and one-off corrections. The *team* tier is
-  `guidelines/*.md` + `AGENTS.md` — curated, versioned, reviewed. The `/capture`
+  `agent-guidelines/*.md` + `AGENTS.md` — curated, versioned, reviewed. The `/capture`
   skill is the manual bridge: promote a private learning into team memory when
   it would prevent the same mistake for a colleague. The earlier
   `.claude/LEARNINGS.md` SessionEnd-hook capture loop was removed in favour of
-  native Auto-Memory; team-sharing is preserved via `/capture` → `guidelines/`.
+  native Auto-Memory; team-sharing is preserved via `/capture` → `agent-guidelines/`.
 - **OpenCode has no native dynamic memory.** OpenCode's `instructions` array
-  loads `AGENTS.md` + `guidelines/*.md` as static project memory (team tier
+  loads `AGENTS.md` + `agent-guidelines/*.md` as static project memory (team tier
   only). If OpenCode later ships an Auto-Memory feature, the template should
   follow suit (analogous to Claude Auto-Memory / Codex Memories) — track this
   and migrate if it lands.

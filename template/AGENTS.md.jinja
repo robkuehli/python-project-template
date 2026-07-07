@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Single source of truth for AI coding agents working in **{{ project_name }}**.
-The human-facing standards live in `guidelines/`. Treat this file like code:
+The human-facing standards live in `agent-guidelines/`. Treat this file like code:
 versioned, pruned, kept short — for every line ask *"would an agent make a mistake
 without it?"* If not, cut it.
 
@@ -24,12 +24,13 @@ All work goes through `uv` and `just` — never call a global `python` or `pip`.
 - Python {{ python_version }}, `src/` layout. The package lives in `src/{{ package_name }}/`.
 - Ruff handles formatting and linting (line length 100, Google-style docstrings). Do not hand-format.
 - Full type hints are required; `mypy` runs in `strict` mode.
-- Tests use `pytest` and live under `tests/`. Test philosophy in `guidelines/testing.md`.
-- Docs follow [Diátaxis](https://diataxis.fr/); details in `guidelines/documentation.md`. Changelog rules in `guidelines/changelog.md`.
+- Tests use `pytest` and live under `tests/`. Test philosophy in `agent-guidelines/testing.md`.
+- Docs follow [Diátaxis](https://diataxis.fr/); details in `agent-guidelines/documentation.md`. Changelog rules in `agent-guidelines/changelog.md`.
+{% if include_adrs %}- For decisions with lasting structural consequences (module boundaries, technology choices with switching costs, protocol changes), use `/create-adr` to record the rationale.{% endif %}
 - Reusable workflow procedures live in `skills/` (SKILL.md format). The Pareto set is
   `/explore`, `/spec`, `/plan`, `/test`, `/delegate`, `/review`, `/verify`, `/debug`, `/capture`.
   `/capture` promotes a learning from private memory into the team-shared
-  `guidelines/*.md` or `AGENTS.md` — see "Self-improvement loop" below.
+  `agent-guidelines/*.md` or `AGENTS.md` — see "Self-improvement loop" below.
 
 ## How to work
 
@@ -98,11 +99,11 @@ Two memory tiers, kept apart deliberately:
 {%- endif %}
 
 - **Team memory** — what is shared via git and applies to everyone working on
-  the project: `AGENTS.md` and `guidelines/*.md`. Curated, versioned, reviewed.
+  the project: `AGENTS.md` and `agent-guidelines/*.md`. Curated, versioned, reviewed.
 
 - **Bridge** — `/capture` promotes a private learning into team memory when it
   would prevent the *same mistake for a colleague*. Ask: would this rule apply
-  to others? Yes → `/capture` into `guidelines/<topic>.md` or `AGENTS.md`. No →
+  to others? Yes → `/capture` into `agent-guidelines/<topic>.md` or `AGENTS.md`. No →
   leave it in private memory.
 
 ## Guardrails
@@ -188,7 +189,7 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
   cover quick lookups; subagents cannot spawn subagents.
 - **Memory:** native Auto-Memory (`~/.claude/projects/<project>/memory/`) is the
   private tier — `autoMemoryEnabled: true`, inspect via `/memory`. Team memory is
-  `guidelines/*.md` + this file (via git). Use `/capture` to promote a private
+  `agent-guidelines/*.md` + this file (via git). Use `/capture` to promote a private
   learning into team memory when it applies to colleagues.
 - Context: the statusline (`.claude/scripts/statusline.sh`) auto-uses
   [`ccusage`](https://github.com/ryoppippi/ccusage) if installed
@@ -222,7 +223,7 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
   `researcher` (recon), `reviewer` (independent diff review), `security-auditor`.
   Parity with Claude Code / OpenCode. Subagents cannot spawn subagents.
 - **Memory:** `features.memories = true` (Chronicle) is the private tier —
-  Codex manages it natively. Team memory is `guidelines/*.md` + this file.
+  Codex manages it natively. Team memory is `agent-guidelines/*.md` + this file.
   Use `/capture` to promote a private learning into team memory.
 - **Verify-on-Stop:** a `Stop` hook (`.codex/hooks/verify-on-stop.sh`) reminds
   about `just qa` when a session ends with uncommitted diff. Set
@@ -260,11 +261,11 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
   Default model: `{{ aider_model }}`.
 {%- endif %}
 
-- Run with `aider` — `AGENTS.md` and `guidelines/*.md` are loaded automatically (`read:` in `.aider.conf.yml`).
+- Run with `aider` — `AGENTS.md` and `agent-guidelines/*.md` are loaded automatically (`read:` in `.aider.conf.yml`).
 - `auto-commits` is disabled: stage and commit yourself after reviewing each diff.
-- **Memory:** `read:` in `.aider.conf.yml` loads `AGENTS.md` + `guidelines/*.md` as
+- **Memory:** `read:` in `.aider.conf.yml` loads `AGENTS.md` + `agent-guidelines/*.md` as
   static project memory (team tier). Aider has no native dynamic memory; use
-  `/capture` to promote a learning into `guidelines/*.md`.
+  `/capture` to promote a learning into `agent-guidelines/*.md`.
 - **No native permission system.** Unlike Claude Code (`.claude/settings.json`)
   and OpenCode (`opencode.json`), Aider has no built-in bash-deny or file-deny
   enforcement. The guardrails in this file plus `pre-commit` (`gitleaks`,
@@ -303,8 +304,8 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
   them with `@<name>` in chat or let `build` auto-delegate via the `task` tool.
   Offload verbose recon/tests to them to keep the main context clean.
 - **Memory:** OpenCode has no native dynamic memory. The `instructions` array in
-  `opencode.json` loads `AGENTS.md` + `guidelines/*.md` as static project memory
-  (team tier). Use `/capture` to promote a learning into `guidelines/*.md`.
+  `opencode.json` loads `AGENTS.md` + `agent-guidelines/*.md` as static project memory
+  (team tier). Use `/capture` to promote a learning into `agent-guidelines/*.md`.
 - `permission` block in `opencode.json` uses granular object syntax: denies
   destructive bash patterns (`rm -rf`, `sudo`, `curl|bash`), denies writes to
   guardrail files (`shared_deny_write`), denies reads of secrets (`.env`,

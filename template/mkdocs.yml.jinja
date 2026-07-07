@@ -67,10 +67,18 @@ nav:
       - /verify: skills/verify/SKILL.md
       - /debug: skills/debug/SKILL.md
       - /capture: skills/capture/SKILL.md
-  - Guidelines:
-      - Testing: guidelines/testing.md
-      - Documentation: guidelines/documentation.md
-      - Changelog standards: guidelines/changelog.md
+{%- if include_adrs %}
+      - /create-adr: skills/create-adr/SKILL.md
+{%- endif %}
+  - Agent Guidelines:
+      - Testing: agent-guidelines/testing.md
+      - Documentation: agent-guidelines/documentation.md
+      - Changelog standards: agent-guidelines/changelog.md
+{%- if include_adrs %}
+      - ADR guidelines: agent-guidelines/adr-guidelines.md
+      - ADR conventions: agent-guidelines/repo-adr-conventions.md
+      - ADR template: templates/adr-template.md
+{%- endif %}
   - Changelog: changelog.md
 
 markdown_extensions:

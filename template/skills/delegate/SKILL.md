@@ -44,7 +44,7 @@ silent.
 
 ## Context the agent needs
 - Files to read first: `path:line` references
-- Existing conventions to follow: see `AGENTS.md`, `guidelines/`
+- Existing conventions to follow: see `AGENTS.md`, `agent-guidelines/`
 - Anything subtle that isn't obvious from the code
 
 ## Constraints

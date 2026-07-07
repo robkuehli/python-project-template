@@ -32,7 +32,7 @@ Focus on the modified files. Do not run anything that could mutate state.
 2. **Correctness** — logic errors, edge cases, off-by-one, null/empty handling,
    error paths.
 3. **Conventions** — naming, structure, error style per `AGENTS.md` and
-   `guidelines/`. Flag deviations; don't bikeshed style that's already consistent.
+   `agent-guidelines/`. Flag deviations; don't bikeshed style that's already consistent.
 4. **Tests** — is the changed logic covered? Are the tests meaningful or
    tautological (just-mirror-the-code)?
 5. **Security** — secrets in code/logs, unvalidated input, injection surfaces.

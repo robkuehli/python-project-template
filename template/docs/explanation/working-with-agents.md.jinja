@@ -35,7 +35,7 @@ The discipline is simple:
 
 A few cheap habits save the bulk of token spend:
 
-- **Cache-friendly system blocks.** `AGENTS.md` and `guidelines/*.md` are
+- **Cache-friendly system blocks.** `AGENTS.md` and `agent-guidelines/*.md` are
   structured so they sit at the front of the prompt unchanged — most providers
   cache the front of the prompt, so identical content across sessions costs
   almost nothing after the first hit.
@@ -107,16 +107,16 @@ shared project rules:
 
 | Tool | Private memory (local, automatic) | Team memory (git-shared, curated) | Bridge |
 |---|---|---|---|
-| Claude Code | Auto-Memory (`~/.claude/projects/<project>/memory/`), `/memory` to inspect/edit | `guidelines/*.md`, `AGENTS.md` | `/capture` skill (manual promote) |
-| Codex | `features.memories` (Chronicle), managed by Codex | `guidelines/*.md`, `AGENTS.md` | `/capture` skill (manual promote) |
-| OpenCode | none (no native dynamic memory) | `instructions` array loads `guidelines/*.md` + `AGENTS.md` | `/capture` skill (manual promote) |
-| Aider | none (no native dynamic memory) | `read:` array loads `guidelines/*.md` + `AGENTS.md` | `/capture` skill (manual promote) |
+| Claude Code | Auto-Memory (`~/.claude/projects/<project>/memory/`), `/memory` to inspect/edit | `agent-guidelines/*.md`, `AGENTS.md` | `/capture` skill (manual promote) |
+| Codex | `features.memories` (Chronicle), managed by Codex | `agent-guidelines/*.md`, `AGENTS.md` | `/capture` skill (manual promote) |
+| OpenCode | none (no native dynamic memory) | `instructions` array loads `agent-guidelines/*.md` + `AGENTS.md` | `/capture` skill (manual promote) |
+| Aider | none (no native dynamic memory) | `read:` array loads `agent-guidelines/*.md` + `AGENTS.md` | `/capture` skill (manual promote) |
 
 **The discipline** — when the agent makes an avoidable mistake, capture the
 correction **once** as a durable rule. The decision is:
 
 - Would this rule apply to **a colleague** too? → `/capture` into
-  `guidelines/<topic>.md` or `AGENTS.md` (team tier, git-shared).
+  `agent-guidelines/<topic>.md` or `AGENTS.md` (team tier, git-shared).
 - Is it a **personal preference** (your shell, your sandbox URLs)? → leave it in
   private memory (Auto-Memory / Codex Memories). Don't pollute shared rules.
 
@@ -171,6 +171,6 @@ arbitrary URLs without an `ask` permission unless the runtime is sandboxed.
 ## Further reading
 
 - `AGENTS.md` — project-specific behaviour rules
-- `guidelines/testing.md` · `guidelines/documentation.md` · `guidelines/changelog.md`
+- `agent-guidelines/testing.md` · `agent-guidelines/documentation.md` · `agent-guidelines/changelog.md`
 - `docs/explanation/developer-workflow.md` — when to reach for which skill
 - `skills/*/SKILL.md` — each skill's exact contract

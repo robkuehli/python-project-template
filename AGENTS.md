@@ -59,7 +59,7 @@ template, or the product built from it?* Template → `_dev/docs/`, product →
   filename like `{% if 'codex' in coding_agents %}.codex{% endif %}/config.toml.jinja`).
   Conditional filenames render only when their guard is true.
 - **SPOT** — behaviour rules for generated projects live in
-  `template/AGENTS.md.jinja` and `template/guidelines/*.md`. Tool-specific
+  `template/AGENTS.md.jinja` and `template/agent-guidelines/*.md`. Tool-specific
   configs (`template/.claude/settings.json.jinja`,
   `template/opencode.json.jinja`, `template/.aider.conf.yml.jinja`,
   `template/.codex/config.toml.jinja`) carry only runtime glue. No rule in two
@@ -68,7 +68,7 @@ template, or the product built from it?* Template → `_dev/docs/`, product →
   `shared_deny_write`, `shared_ask_bash`) live once in `copier.yml` with
   `when: false` and are injected into the render context so every tool config
   stays in lockstep. Edit them in `copier.yml`; do not duplicate per tool.
-- **Docs follow Diátaxis** — see `template/guidelines/documentation.md` for the
+- **Docs follow Diátaxis** — see `template/agent-guidelines/documentation.md` for the
   generated-project standard; the template's own docs (`_dev/docs/`) follow the
   same split.
 

@@ -48,7 +48,7 @@ For the full feature list see the **[docs home page](https://robkuehli.github.io
 In short: **uv** + **just** + **pre-commit** (Ruff, Bandit, Gitleaks, mypy,
 pylint, sqlfluff, pytest) + **MkDocs Material** with mkdocstrings, **GitHub
 Actions** CI + Pages, **Dependabot**, an `AGENTS.md` plus optional `.claude/`,
-`.opencode/`, `.aider.conf.yml` agent setups, a `guidelines/` and `skills/`
+`.opencode/`, `.aider.conf.yml` agent setups, a `agent-guidelines/` and `skills/`
 folder with the 9 workflow skills, an optional **Docker-Compose sandbox**, and
 project hygiene files (CHANGELOG, CONTRIBUTING, CODE_OF_CONDUCT, .editorconfig,
 .env + .env.template, py.typed).

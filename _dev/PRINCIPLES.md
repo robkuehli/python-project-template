@@ -56,7 +56,7 @@ If a Copier question can be skipped by inferring from another answer, it is.
 ### III. Single Source of Truth (SPOT)
 
 Behaviour rules for AI agents live exclusively in **`AGENTS.md`** and
-**`guidelines/*.md`**. Tool-specific files (`.claude/settings.json`,
+**`agent-guidelines/*.md`**. Tool-specific files (`.claude/settings.json`,
 `opencode.json`, `.aider.conf.yml`, `CLAUDE.md`) carry only the glue that
 each runtime needs — backend URL, model alias, hook wiring.
 
@@ -116,7 +116,7 @@ These are the minimum gates every generated project ships with:
 - **Typing** — `mypy --strict`
 - **Deeper linting** — `pylint` fail-under 9
 - **Security** — `bandit` + `gitleaks` + `detect-private-key`
-- **Tests** — `pytest`, interface-centric (see `guidelines/testing.md`)
+- **Tests** — `pytest`, interface-centric (see `agent-guidelines/testing.md`)
 - **Docs** — `MkDocs` Material + `mkdocstrings`, Diátaxis layout
 - **Changelog** — Keep a Changelog 1.1.0 + SemVer 2.0.0
 
@@ -127,7 +127,7 @@ Each gate is wired in `pre-commit` and surfaced through `just`.
 ## Governance
 
 These principles supersede any conflicting rule in `AGENTS.md`,
-`guidelines/`, or skill files. When in doubt, the principles win.
+`agent-guidelines/`, or skill files. When in doubt, the principles win.
 
 **Amendments** to this file require:
 
@@ -139,7 +139,7 @@ These principles supersede any conflicting rule in `AGENTS.md`,
 
 **Scope:** These principles govern the template itself. Generated projects
 inherit them by reference — they may add project-specific guidelines under
-`guidelines/`, but they may not relax a principle without amending the
+`agent-guidelines/`, but they may not relax a principle without amending the
 template upstream.
 
 **Version**: 1.1.0 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-18

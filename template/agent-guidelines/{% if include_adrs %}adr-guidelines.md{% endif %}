@@ -1,0 +1,56 @@
+# ADR Guidelines (ADR Desiderata)
+
+These are repository-independent quality principles for architecture decision records, in the same spirit as Test Desiderata for tests and Diataxis for documentation: a set of properties a good ADR exhibits, used both while drafting and while reviewing.
+
+They complement, but are separate from, `repo-adr-conventions.md`, which covers this repository's file locations, numbering, and metadata mechanics. These guidelines apply regardless of where the ADR lives or how it is filed.
+
+## The Desiderata
+
+An ADR should be:
+
+1. **Atomic**
+   One coherent architectural decision per record. If a request bundles multiple independent decisions, split them into separate ADRs rather than merging them, unless the points are so tightly coupled that discussing one without the other is meaningless.
+
+2. **Contextual, not justificatory**
+   `Context` describes the problem, constraints, and current state — not the chosen solution and not why it was chosen. A reader should be able to read only the context and still not know what was decided.
+
+3. **Decisive**
+   `Decision` states the selected approach in unambiguous, testable terms: what changes, what the scope boundaries are, and what is explicitly out of scope. Avoid hedging language ("we should probably...", "in most cases...").
+
+4. **Justified with evidence, not assertion**
+   Each point in `Rationale` explains *why* the decision is right in this specific context — referencing concrete constraints, prior incidents, measurements, or trade-offs — rather than restating the decision in different words or appealing to generic best practice.
+
+5. **Honest about consequences**
+   `Consequences` names real downsides, not just benefits. A list of only positive consequences is a sign the trade-offs were not seriously considered. Operational and implementation implications (migration cost, on-call impact, added complexity) belong here.
+
+6. **Comparative against real alternatives**
+   `Alternatives Considered` lists options that were genuinely viable, not strawmen constructed to make the chosen option look obviously superior. Each rejected alternative gets a concrete, specific reason for rejection tied to the context — not a vague "did not fit our needs."
+
+7. **Non-redundant**
+   No section repeats what another section already said. If the same sentence could be moved between `Context`, `Decision`, and `Rationale` without changing its meaning, it's in the wrong section or it's filler.
+
+8. **Scoped to what is architectural**
+   An ADR records a decision with lasting structural consequences (module boundaries, data ownership, protocols, technology choices with switching costs) — not routine implementation details, style preferences, or decisions easily reversed at low cost.
+
+9. **Traceable**
+   ID, date, owner, and reviewers are accurate and consistent with the repository's records, so the decision can be located, dated, and attributed later without ambiguity.
+
+10. **Supersedable, not silently mutable**
+    Once an ADR reflects an accepted decision, prefer writing a new ADR that supersedes it over editing the original when the underlying decision changes. The historical record of *why* something was once decided is as valuable as the current state. Pure corrections (typos, formatting, broken links) are the exception and may be edited in place.
+
+11. **Self-contained**
+    A reader unfamiliar with the surrounding discussion (Slack threads, meetings, tickets) should be able to understand the decision and its reasoning from the ADR alone. Link to external material for depth, but don't make the ADR depend on it for basic comprehension.
+
+## Using These Desiderata
+
+- While drafting: use each item as a prompt — "does my Context leak the decision?", "is at least one alternative genuinely competitive?"
+- While reviewing: walk the list explicitly against the draft rather than reading once for a general impression. A record can look polished and still fail several of these.
+- These are heuristics, not a rigid checklist to satisfy mechanically — the goal is a decision record future readers can trust and act on, not a document that merely has all sections filled in.
+
+## Related Frameworks
+
+For further grounding, these guidelines draw on and can be cross-checked against:
+- Michael Nygard's original ADR pattern (context / decision / status / consequences).
+- MADR (Markdown Architectural Decision Records) and Y-statement formats, for comparison on structuring rationale and alternatives.
+
+These are referenced for calibration, not copied wholesale — this repository's template and conventions take precedence where they differ.

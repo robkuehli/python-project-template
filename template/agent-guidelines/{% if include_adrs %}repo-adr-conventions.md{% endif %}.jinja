@@ -1,0 +1,41 @@
+# ADR Conventions For This Repository
+
+This file covers the mechanical, repository-specific rules for filing ADRs: where they live, how they're numbered, and what default metadata to use. For principles on what makes an ADR *good*, see `adr-guidelines.md` — those apply regardless of repository and are not repeated here.
+
+## File Locations
+
+- Template: `docs/templates/adr-template.md`
+- ADR directory: `docs/adr`
+- ADR filenames: zero-padded numeric markdown files (for example `001.md`, `005.md`)
+
+## Numbering
+
+- The next ADR number is the highest existing zero-padded filename in `docs/adr` plus one, formatted to three digits (`001` if the directory is empty).
+- Never reuse a number, including numbers of superseded or deprecated ADRs.
+- If `docs/adr` contains filenames that don't follow the `NNN.md` pattern, treat this as ambiguous and ask before assigning a number.
+
+## Metadata Conventions
+
+- `ADR ID`: match filename number as `ADR-XYZ` (for example `ADR-005`)
+- `Title`: concise decision statement
+- `Date`: ISO format `YYYY-MM-DD`
+- `Status`: leave blank unless user provides a status
+- `Owner`: default is "{{ author_name }}" unless the user requests a different value
+- `Reviewers`: default is "DevOps Team" unless the user requests a different value
+
+## Section Order
+
+Keep the template's section order unchanged:
+
+1. `Context`
+2. `Decision`
+3. `Rationale`
+4. `Consequences`
+5. `Alternatives Considered`
+
+Section-level content expectations (what belongs in each section, how rationale and alternatives should be argued) are covered in `adr-guidelines.md`, not here.
+
+## Supersession
+
+- When a decision changes, create a new ADR that references and supersedes the old one rather than editing the original's `Decision` or `Context` retroactively.
+- Update the superseded ADR's `Status` to reflect that it has been superseded, and link to the new ADR ID.

@@ -23,6 +23,7 @@ each to the matching `SKILL.md`.
 | [`/verify`](verify/SKILL.md) | Prove the change works | Fresh evidence (command + output) mapped to acceptance criteria |
 | [`/debug`](debug/SKILL.md) | Find a root cause | Repro, hypotheses, root cause, fix + regression test |
 | [`/capture`](capture/SKILL.md) | Save a learning | One-line rule with date and *why* |
+{% if include_adrs %}| [`/create-adr`](create-adr/SKILL.md) | Document an architectural decision | ADR file in `docs/adr/` following local template and numbering |{% endif %}
 
 ## How they compose
 

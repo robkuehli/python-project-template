@@ -32,11 +32,11 @@ Generating a project produces:
   security-auditor), Verify-on-Stop hooks/plugins, granular permissions (where
   the tool supports them), and the Context7 MCP server (opt-in via
   `include_context7`).
-- A **`guidelines/`** folder (testing / documentation / changelog standards) and
+- A **`agent-guidelines/`** folder (testing / documentation / changelog standards) and
   a **`skills/`** folder with the 9 workflow skills (`/explore`, `/spec`, `/plan`,
   `/test`, `/delegate`, `/review`, `/verify`, `/debug`, `/capture`) in
   `SKILL.md` format. `/capture` promotes a private learning into team-shared
-  `guidelines/*.md` or `AGENTS.md`.
+  `agent-guidelines/*.md` or `AGENTS.md`.
 - An optional **Docker-Compose sandbox** that bind-mounts the repo into an
   isolated container so agents can't reach host secrets, with optional SearXNG,
   Crawl4AI, and LLM observability (MLflow / Langfuse).

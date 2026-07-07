@@ -1,1 +1,0 @@
---8<-- "guidelines/documentation.md"
