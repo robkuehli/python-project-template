@@ -57,7 +57,10 @@ run the tests" has one answer in every project.
 
 Generated this project from a template by filling placeholders (name, package,
 Python version, …) recorded in `.copier-answers.yml`. Running `copier update`
-re-applies an updated template and merges improvements into the project.
+re-applies template-owned infrastructure while leaving project-owned content
+(`CHANGELOG.md`, `README.md`, `docs/index.md`, `src/**`, and `tests/**`)
+untouched. This boundary keeps configuration improvements flowing without
+putting maintained product content back under template control.
 
 ### pre-commit — orchestrates the checks
 

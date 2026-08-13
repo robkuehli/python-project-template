@@ -10,10 +10,22 @@ project was generated from a Copier template; for how the template itself works
 When the template improves, pull the changes in:
 
 ```bash
-just update        # = copier update --trust --skip-answered
+just update        # = copier update --trust --skip-answered --skip-tasks
 ```
 
 Review the diff, resolve any conflicts, then commit.
+
+Copier updates only template-owned infrastructure. `CHANGELOG.md`, `README.md`,
+`docs/index.md`, `src/**`, and `tests/**` became project-owned when this project
+was created, so updates never merge into, overwrite, or recreate them. Config,
+CI, agent guidance, skills, and template reference/how-to docs continue to
+update.
+
+Generation tasks run only on the initial copy. The recipe passes `--skip-tasks`
+so even historical template task definitions are not executed during an
+upgrade. `just update` does not rerun dependency or hook installation, sandbox
+secret bootstrap, symlink setup, or Spec-Kit initialization. Run `just install`
+or the relevant documented setup command explicitly when needed.
 
 ## Pick a license
 

@@ -54,7 +54,7 @@ render-test:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    rm -rf /tmp/render-test-1 /tmp/render-test-2 /tmp/render-test-3 /tmp/render-test-4 /tmp/render-test-5 /tmp/render-test-6 /tmp/render-test-7 /tmp/render-test-8 /tmp/render-test-invalid /tmp/render-test-home /tmp/render-test-empty-home /tmp/render-test-user-compose.yml
+    rm -rf /tmp/render-test-1 /tmp/render-test-2 /tmp/render-test-3 /tmp/render-test-4 /tmp/render-test-5 /tmp/render-test-6 /tmp/render-test-7 /tmp/render-test-8 /tmp/render-test-update /tmp/render-test-update-preserved /tmp/render-test-template /tmp/render-test-invalid /tmp/render-test-home /tmp/render-test-empty-home /tmp/render-test-user-compose.yml
 
     # Invalid identifiers must fail before any project files or tasks execute.
     if uv tool run --from copier==9.17.1 copier copy --defaults \
@@ -128,14 +128,80 @@ render-test:
       --data cicd_provider=none \
       . /tmp/render-test-7
 
-    # Test 8: Pi-only + Spec-Kit — native skill discovery and remaining SDD path.
+    # Test 8: Claude + Codex + Pi share one multi-install-safe Spec-Kit project.
     uv tool run --from copier==9.17.1 copier copy --trust --defaults --vcs-ref=HEAD \
       --data project_name="Test8" \
-      --data coding_agents='["pi"]' \
+      --data coding_agents='["claude_code","codex","pi"]' \
+      --data claude_provider=subscription \
+      --data codex_provider=subscription \
       --data include_sandbox=false \
       --data sdd_framework=spec-kit \
-      --data sdd_install_agent=pi \
+      --data sdd_install_agent=claude \
       . /tmp/render-test-8
+
+    # Update regression: start from the previous committed template, add
+    # project-owned content, then update to the dirty working tree under test.
+    # The authored content must be untouched, deleted starter files must stay
+    # deleted, template-owned config must still update, and copy-only tasks must
+    # not create the sandbox .env during `copier update --trust`.
+    git clone -q "$PWD" /tmp/render-test-template
+    git diff --binary HEAD | git -C /tmp/render-test-template apply -
+    git -C /tmp/render-test-template add -A
+    git -C /tmp/render-test-template \
+      -c user.name=RenderTest -c user.email=render-test@example.com \
+      commit --allow-empty -qm 'template under test'
+    uv tool run --from copier==9.17.1 copier copy --trust --defaults --skip-tasks \
+      --vcs-ref=98d5d41 \
+      --data project_name="UpdateTest" \
+      --data python_version="3.12" \
+      --data include_sandbox=true \
+      --data sandbox_auto_init=true \
+      /tmp/render-test-template /tmp/render-test-update
+    printf '\nProject-owned changelog entry.\n' >> /tmp/render-test-update/CHANGELOG.md
+    printf '\nProject-owned README section.\n' >> /tmp/render-test-update/README.md
+    printf '\nProject-owned documentation.\n' >> /tmp/render-test-update/docs/index.md
+    printf '\n# Project-owned source edit.\n' >> /tmp/render-test-update/src/updatetest/__init__.py
+    rm /tmp/render-test-update/src/updatetest/example.py \
+      /tmp/render-test-update/tests/test_smoke.py
+    mkdir -p /tmp/render-test-update-preserved/src/updatetest \
+      /tmp/render-test-update-preserved/docs
+    cp /tmp/render-test-update/CHANGELOG.md \
+      /tmp/render-test-update-preserved/CHANGELOG.md
+    cp /tmp/render-test-update/README.md \
+      /tmp/render-test-update-preserved/README.md
+    cp /tmp/render-test-update/docs/index.md \
+      /tmp/render-test-update-preserved/docs/index.md
+    cp /tmp/render-test-update/src/updatetest/__init__.py \
+      /tmp/render-test-update-preserved/src/updatetest/__init__.py
+    (cd /tmp/render-test-update \
+      && git init -q -b main \
+      && git add -A \
+      && git -c user.name=RenderTest -c user.email=render-test@example.com \
+        commit -qm 'project-owned content' \
+      && uv tool run --from copier==9.17.1 copier update --trust --defaults \
+        --skip-answered --skip-tasks --vcs-ref=HEAD \
+        --data python_version="3.14")
+    cmp /tmp/render-test-update/CHANGELOG.md \
+      /tmp/render-test-update-preserved/CHANGELOG.md
+    cmp /tmp/render-test-update/README.md \
+      /tmp/render-test-update-preserved/README.md
+    cmp /tmp/render-test-update/docs/index.md \
+      /tmp/render-test-update-preserved/docs/index.md
+    cmp /tmp/render-test-update/src/updatetest/__init__.py \
+      /tmp/render-test-update-preserved/src/updatetest/__init__.py
+    test ! -e /tmp/render-test-update/src/updatetest/example.py
+    test ! -e /tmp/render-test-update/tests/test_smoke.py
+    test "$(cat /tmp/render-test-update/.python-version)" = "3.14"
+    test ! -e /tmp/render-test-update/.env
+    # Once the project is on the new task definitions, even a direct trusted
+    # update without --skip-tasks must remain side-effect-free.
+    (cd /tmp/render-test-update \
+      && git add -A \
+      && git -c user.name=RenderTest -c user.email=render-test@example.com \
+        commit -qm 'apply template update' \
+      && uv tool run --from copier==9.17.1 copier update --trust --defaults \
+        --skip-answered --vcs-ref=HEAD)
+    test ! -e /tmp/render-test-update/.env
 
     python3 -m json.tool /tmp/render-test-1/.claude/settings.json >/dev/null
     bash -n /tmp/render-test-1/.claude/scripts/statusline.sh
@@ -241,11 +307,16 @@ render-test:
     test ! -f /tmp/render-test-7/.github/dependabot.yml \
         || { echo "FAIL: dependabot.yml must not exist in render-test-7"; exit 1; }
 
-    # Test 8: Pi support + Spec-Kit docs, with no removed OpenSpec surface.
+    # Test 8: all selected safe integrations share the Spec-Kit project.
     test -L /tmp/render-test-8/.agents/skills
     test -f /tmp/render-test-8/docs/how-to/spec-driven-development.md
+    test -f /tmp/render-test-8/.claude/skills/speckit-constitution/SKILL.md
+    test -f /tmp/render-test-8/.agents/skills/speckit-constitution/SKILL.md
     test -f /tmp/render-test-8/.pi/prompts/speckit.constitution.md
     test -f /tmp/render-test-8/.specify/integration.json
+    python3 -c "import json; d=json.load(open('/tmp/render-test-8/.specify/integration.json')); assert d['default_integration']=='claude'; assert set(d['installed_integrations'])=={'claude','codex','pi'}"
+    (cd /tmp/render-test-8 && specify integration status --json) \
+      | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['status']=='ok'; assert d['multi_install_safe'] is True"
     rg -q "Spec-Kit" /tmp/render-test-8/docs/how-to/spec-driven-development.md
     ! rg -qi "openspec|open spec" /tmp/render-test-8
 

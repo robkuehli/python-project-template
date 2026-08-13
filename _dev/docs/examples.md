@@ -61,6 +61,7 @@ codex_provider         → LiteLLM gateway (OpenAI-compatible)
 litellm_base_url       → https://litellm.your-company.internal
 include_sandbox        → no
 sdd_framework          → Spec-Kit — structured, intent-driven, uv-based
+sdd_install_agent      → Claude Code                     # default; Codex is installed alongside it
 include_sql            → yes
 sql_dialect            → snowflake                      # or postgres, bigquery, ansi, …
 license                → Proprietary

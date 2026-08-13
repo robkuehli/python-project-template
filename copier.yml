@@ -24,15 +24,27 @@ _exclude:
   - "*.py[co]"
   - "site"
   - "node_modules"
+  # These files are starter content on `copier copy`, then belong to the
+  # generated project. Excluding them only during updates prevents Copier from
+  # merging, overwriting, or recreating actively maintained project content.
+  - "{% if _copier_operation == 'update' %}CHANGELOG.md{% endif %}"
+  - "{% if _copier_operation == 'update' %}README.md{% endif %}"
+  - "{% if _copier_operation == 'update' %}docs/index.md{% endif %}"
+  - "{% if _copier_operation == 'update' %}src/**{% endif %}"
+  - "{% if _copier_operation == 'update' %}tests/**{% endif %}"
 
-# Post-generation tasks. Only run when Copier is invoked with `--trust`.
+# Post-generation tasks. Only run for a fresh scaffold invoked with `--trust`.
+# Copier 9.17 performs update reconciliation through quiet internal copy
+# workers, so task conditions reject those renders as well as the outer update.
 # Without --trust, the project is generated but these are skipped.
 _tasks:
-  - "git init -q -b main"
+  - command: "git init -q -b main"
+    when: "{{ _copier_operation == 'copy' and not _copier_conf.quiet }}"
   # Replace the copied skills directory with a symlink so docs/skills and
   # the top-level skills/ stay in sync. Copier dereferences symlinks during
   # copy, so this has to be re-established after generation.
-  - "rm -rf docs/skills && ln -s ../skills docs/skills"
+  - command: "rm -rf docs/skills && ln -s ../skills docs/skills"
+    when: "{{ _copier_operation == 'copy' and not _copier_conf.quiet }}"
   # Sandbox secret bootstrap — populates `.env` with `openssl rand` values for
   # SEARXNG_SECRET (+ CRAWL4AI_API_TOKEN / LANGFUSE_* where enabled) right now,
   # so the rendered project is ready for `docker compose up` / `just sandbox-up`
@@ -40,45 +52,69 @@ _tasks:
   # same logic and skips keys that already exist. Runs *before* `uv sync` so a
   # later sync failure still leaves a populated `.env` behind. Both branches
   # WARN-only so generation never hard-fails on a missing host-level prereq.
-  - |
-    {% if include_sandbox and sandbox_auto_init -%}
-    if command -v just >/dev/null 2>&1; then
-      just sandbox-init || echo "WARN: 'just sandbox-init' failed. '.env' is unpopulated; 'docker compose up' / 'just sandbox-up' will fail loudly on the ':?' guards. Re-run manually; see docker/README.md.";
-    else
-      echo "WARN: just not found on PATH. '.env' is unpopulated; 'docker compose up' / 'just sandbox-up' will fail loudly on the ':?' guards. Install just and run 'just sandbox-init' manually; see docker/README.md.";
-    fi
-    {%- else -%}
-    true
-    {%- endif %}
-  - "uv sync"
-  - "uv run pre-commit install"
+  - command: |
+      {% if include_sandbox and sandbox_auto_init -%}
+      if command -v just >/dev/null 2>&1; then
+        just sandbox-init || echo "WARN: 'just sandbox-init' failed. '.env' is unpopulated; 'docker compose up' / 'just sandbox-up' will fail loudly on the ':?' guards. Re-run manually; see docker/README.md.";
+      else
+        echo "WARN: just not found on PATH. '.env' is unpopulated; 'docker compose up' / 'just sandbox-up' will fail loudly on the ':?' guards. Install just and run 'just sandbox-init' manually; see docker/README.md.";
+      fi
+      {%- else -%}
+      true
+      {%- endif %}
+    when: "{{ _copier_operation == 'copy' and not _copier_conf.quiet }}"
+  - command: "uv sync"
+    when: "{{ _copier_operation == 'copy' and not _copier_conf.quiet }}"
+  - command: "uv run pre-commit install"
+    when: "{{ _copier_operation == 'copy' and not _copier_conf.quiet }}"
   # Codex and Pi both discover repository skills under `.agents/skills`.
   # Keep `skills/` as the human-facing canonical directory and expose it at
   # the native discovery path without duplicating the skill files.
-  - |
-    {% if 'codex' in coding_agents or 'pi' in coding_agents -%}
-    mkdir -p .agents
-    if [ ! -e .agents/skills ] && [ ! -L .agents/skills ]; then
-      ln -s ../skills .agents/skills
-    fi
-    {%- else -%}
-    true
-    {%- endif %}
+  - command: |
+      {% if 'codex' in coding_agents or 'pi' in coding_agents -%}
+      mkdir -p .agents
+      if [ ! -e .agents/skills ] && [ ! -L .agents/skills ]; then
+        ln -s ../skills .agents/skills
+      fi
+      {%- else -%}
+      true
+      {%- endif %}
+    when: "{{ _copier_operation == 'copy' and not _copier_conf.quiet }}"
   # SDD bootstrap — runs `init` non-interactively when the CLI is available.
   # No-op for sdd_framework=none. Both the missing-CLI branch and the
   # init-failure branch print WARN-only so generation never hard-fails on
   # a missing host-level prereq or a future flag rename.
-  - |
-    {% if sdd_framework == 'spec-kit' -%}
-    if command -v specify >/dev/null 2>&1; then
-      specify init . --here --integration {{ sdd_install_agent }} --force --ignore-agent-tools \
-        || echo "WARN: specify init failed. Re-run manually; see docs/how-to/spec-driven-development.md.";
-    else
-      echo "WARN: specify CLI not found on PATH. Install via 'uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@{{ tool_versions.spec_kit_ref }}' and run 'specify init . --here --integration {{ sdd_install_agent }} --force --ignore-agent-tools'. See docs/how-to/spec-driven-development.md.";
-    fi
-    {%- else -%}
-    true
-    {%- endif %}
+  - command: |
+      {% if sdd_framework == 'spec-kit' -%}
+      if command -v specify >/dev/null 2>&1; then
+        if specify init . --here --integration {{ sdd_install_agent }} --force --ignore-agent-tools; then
+          {% if sdd_install_agent != 'opencode' -%}
+          {% if 'claude_code' in coding_agents and sdd_install_agent != 'claude' -%}
+          specify integration install claude \
+            || echo "WARN: Spec-Kit's Claude integration failed to install. Re-run manually; see docs/how-to/spec-driven-development.md.";
+          {% endif -%}
+          {% if 'codex' in coding_agents and sdd_install_agent != 'codex' -%}
+          specify integration install codex \
+            || echo "WARN: Spec-Kit's Codex integration failed to install. Re-run manually; see docs/how-to/spec-driven-development.md.";
+          {% endif -%}
+          {% if 'pi' in coding_agents and sdd_install_agent != 'pi' -%}
+          specify integration install pi \
+            || echo "WARN: Spec-Kit's Pi integration failed to install. Re-run manually; see docs/how-to/spec-driven-development.md.";
+          {% endif -%}
+          {%- endif %}
+          {% if 'opencode' in coding_agents and sdd_install_agent != 'opencode' -%}
+          echo "WARN: OpenCode is not declared multi-install-safe by Spec-Kit, so its integration was not installed alongside {{ sdd_install_agent }}. See docs/how-to/spec-driven-development.md for the manual --force opt-in.";
+          {% endif -%}
+        else
+          echo "WARN: specify init failed. Re-run manually; see docs/how-to/spec-driven-development.md.";
+        fi
+      else
+        echo "WARN: specify CLI not found on PATH. Install via 'uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@{{ tool_versions.spec_kit_ref }}' and run 'specify init . --here --integration {{ sdd_install_agent }} --force --ignore-agent-tools'. See docs/how-to/spec-driven-development.md.";
+      fi
+      {%- else -%}
+      true
+      {%- endif %}
+    when: "{{ _copier_operation == 'copy' and not _copier_conf.quiet }}"
 
 # ---------------------------------------------------------------------------
 # Project identity
@@ -374,14 +410,23 @@ sdd_framework:
 sdd_install_agent:
   type: str
   help: >-
-    Which selected agent should receive the Spec-Kit integration assets?
-    Spec-Kit generates agent-specific skills or command files. Defaults to the
-    first compatible agent enabled above (claude > codex > pi > opencode).
-  choices:
-    "Claude Code (.claude/commands/)": "claude"
-    "Codex CLI": "codex"
-    "Pi Coding Agent": "pi"
+    Which selected agent should be the default Spec-Kit integration? Additional
+    selected integrations declared multi-install-safe by Spec-Kit are installed
+    alongside it. Defaults to the first compatible agent enabled above
+    (claude > codex > pi > opencode).
+  choices: |
+    {% if 'claude_code' in coding_agents -%}
+    "Claude Code (.claude/skills/)": "claude"
+    {% endif -%}
+    {% if 'codex' in coding_agents -%}
+    "Codex CLI (.agents/skills/)": "codex"
+    {% endif -%}
+    {% if 'pi' in coding_agents -%}
+    "Pi Coding Agent (.pi/prompts/)": "pi"
+    {% endif -%}
+    {% if 'opencode' in coding_agents -%}
     "OpenCode": "opencode"
+    {% endif -%}
   default: >-
     {% if 'claude_code' in coding_agents %}claude{% elif 'codex' in coding_agents %}codex{% elif 'pi' in coding_agents %}pi{% elif 'opencode' in coding_agents %}opencode{% else %}claude{% endif %}
   when: "{{ sdd_framework != 'none' }}"

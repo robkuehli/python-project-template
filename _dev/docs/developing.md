@@ -61,8 +61,12 @@ The eight scenarios (see the justfile comments for full details):
   Context7 else-branch, and 3.12 tooling pins; no sandbox → fast).
 - **Test 6** — GitLab CI, with GitHub-only files absent.
 - **Test 7** — no CI/CD, with both provider surfaces absent.
-- **Test 8** — Pi-only + Spec-Kit (covers Pi selection, `.agents/skills`, and
-  the remaining SDD branch).
+- **Test 8** — Claude + Codex + Pi with Spec-Kit (covers one default plus
+  multiple safe integrations sharing `.specify/` and native agent paths).
+
+The same gate also updates a project rendered from the previous baseline and
+proves that project-owned content is untouched while template-owned config
+still changes.
 
 The test runs with `--defaults`, so a shift in `copier.yml` defaults moves the
 covered scope with it instead of silently going stale.

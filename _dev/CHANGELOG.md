@@ -13,6 +13,11 @@ their own `CHANGELOG.md` (see `template/CHANGELOG.md.jinja`).
 
 ### Added
 
+- **Multi-agent Spec-Kit projects** for selected Claude Code, Codex, and Pi
+  integrations. `sdd_install_agent` now chooses the default integration while
+  the other selected, multi-install-safe integrations are installed alongside
+  it. Mixed OpenCode installs remain an explicit manual `--force` opt-in.
+
 - **Opt-in global sandbox instructions** via
   `just sandbox-enable-user-instructions`. The helper displays detected
   standard Claude/Codex user instruction sources, asks for confirmation, and
@@ -55,6 +60,10 @@ their own `CHANGELOG.md` (see `template/CHANGELOG.md.jinja`).
 
 ### Changed
 
+- Project-authored `CHANGELOG.md`, `README.md`, `docs/index.md`, `src/**`, and
+  `tests/**` are now rendered once and excluded from Copier updates. Generation
+  tasks are copy-only, so updates no longer rerun environment, hook, sandbox,
+  symlink, or Spec-Kit bootstrap steps.
 - Added Copier validators for project/package identity, human-readable
   single-line fields, email, GitHub owner, backend URLs, model aliases, and SQL
   dialects. Free-text values are context-quoted in TOML/YAML/JSON/Python output,
@@ -116,6 +125,9 @@ their own `CHANGELOG.md` (see `template/CHANGELOG.md.jinja`).
 
 ### Fixed
 
+- Prevented `copier update` from replacing maintained project changelog and
+  product content with template starter files or recreating intentionally
+  deleted source/test files.
 - Made the render smoketest stage a generated project and execute its real
   `just qa` and strict `just docs-build` gates, eliminating the previous
   Pre-Commit false pass on an untracked fresh render. Copier now preserves final

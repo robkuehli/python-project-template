@@ -76,8 +76,12 @@ Eight scenarios (see `_dev/justfile` comments for details):
    else-branch, 3.12 tooling pins).
 6. GitLab CI, with GitHub-only files absent.
 7. No CI/CD, with both provider surfaces absent.
-8. Pi-only + Spec-Kit, covering native shared-skill discovery and the remaining
-   SDD branch.
+8. Claude + Codex + Pi with Spec-Kit, covering a default integration plus
+   multiple safe integrations and their native agent paths.
+
+The gate also performs an update regression from the previous baseline to prove
+that project-owned files are preserved while template-owned configuration still
+updates.
 
 The test runs with `--defaults`, so a shift in `copier.yml` defaults moves the
 covered scope with it instead of silently going stale.

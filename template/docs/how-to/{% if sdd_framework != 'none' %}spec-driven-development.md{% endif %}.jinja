@@ -44,10 +44,23 @@ specify integration list
 ### Initialise inside this project
 
 > The Copier `_tasks` step already runs this for you when the CLI is on
-> `PATH` at generation time. The block below is the manual fallback.
+> `PATH` during the initial `copier copy`. Copier updates never rerun bootstrap
+> tasks. The block below is the manual fallback and the migration path for a
+> project generated before multi-agent integration support.
 
 ```bash
 specify init . --here --integration {{ sdd_install_agent }} --force --ignore-agent-tools
+{% if sdd_install_agent != 'opencode' -%}
+{% if 'claude_code' in coding_agents and sdd_install_agent != 'claude' -%}
+specify integration install claude
+{% endif -%}
+{% if 'codex' in coding_agents and sdd_install_agent != 'codex' -%}
+specify integration install codex
+{% endif -%}
+{% if 'pi' in coding_agents and sdd_install_agent != 'pi' -%}
+specify integration install pi
+{% endif -%}
+{%- endif %}
 ```
 
 Run `specify integration list` to see the integrations supported by your
@@ -57,6 +70,40 @@ installed CLI. This template can initialise `claude`, `codex`, `pi`, or
 the host; it does not disable checks inside later Spec-Kit workflows.
 Pi does not have built-in MCP support, so Spec-Kit's `taskstoissues` integration
 requires a separately reviewed Pi extension.
+
+### Multiple coding agents
+
+Spec-Kit records one **default integration** and any number of additional
+installed integrations. This project's default is `{{ sdd_install_agent }}`.
+Copier also installs every selected integration that Spec-Kit declares safe for
+multi-installation: Claude Code, Codex, and Pi use separate command or skill
+paths and can work from the same `.specify/` and `specs/` content.
+
+```bash
+specify integration status
+specify integration use <installed-key>  # changes the default; does not uninstall others
+```
+
+{% if 'opencode' in coding_agents -%}
+OpenCode is selected for this project, but Spec-Kit does not currently declare
+its integration multi-install-safe. {% if sdd_install_agent == 'opencode' %}It
+therefore remains the only automatically installed integration.{% else %}Copier
+therefore leaves it out of the automatic multi-agent installation.{% endif %}
+To accept Spec-Kit's warning and install another integration alongside the
+existing set, opt in explicitly:
+
+```bash
+{% if sdd_install_agent == 'opencode' -%}
+# Replace `claude` with another selected integration as needed.
+specify integration install claude --force
+{% else -%}
+specify integration install opencode --force
+{% endif -%}
+```
+
+Review the generated agent paths before committing them; `--force` here
+acknowledges Spec-Kit's multi-install safety check.
+{% endif -%}
 
 ### Memory architecture
 
@@ -101,13 +148,29 @@ skills installed by Spec-Kit: Claude Code, Pi, and OpenCode expose
 ```bash
 uv tool install specify-cli --force --from git+https://github.com/github/spec-kit.git@{{ tool_versions.spec_kit_ref }}
 specify integration upgrade {{ sdd_install_agent }}
+{% if sdd_install_agent != 'opencode' -%}
+{% if 'claude_code' in coding_agents and sdd_install_agent != 'claude' -%}
+specify integration upgrade claude
+{% endif -%}
+{% if 'codex' in coding_agents and sdd_install_agent != 'codex' -%}
+specify integration upgrade codex
+{% endif -%}
+{% if 'pi' in coding_agents and sdd_install_agent != 'pi' -%}
+specify integration upgrade pi
+{% endif -%}
+{%- endif %}
 ```
+
+Upgrade each installed integration separately. The manifest-aware upgrade path
+preserves locally modified integration files and does not touch specifications
+or the constitution unless you explicitly force it.
 
 ## Verify the setup
 
 ```bash
 specify version
 specify integration list
+specify integration status
 ls .specify/                   # memory/, scripts/, templates/
 ls specs/                      # one directory per feature
 ```

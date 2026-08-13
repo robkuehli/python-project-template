@@ -57,7 +57,7 @@ of the choice. Each selected agent unlocks a backend prompt.
 | Prompt | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `sdd_framework` | choice | `none` | **conditional** (Claude Code, Codex, Pi, or OpenCode selected). None (informal `/spec`) / Spec-Kit (structured, intent-driven, uv). Aider has no Spec-Kit integration. |
-| `sdd_install_agent` | choice | first enabled agent (claude > codex > pi > opencode) | **conditional** (`sdd_framework != none`). Which agent gets the Spec-Kit integration. |
+| `sdd_install_agent` | choice | first enabled agent (claude > codex > pi > opencode) | **conditional** (`sdd_framework != none`). Selects the default from the compatible agents enabled in `coding_agents`. Other selected integrations declared multi-install-safe by Spec-Kit (Claude, Codex, Pi) are installed alongside it. OpenCode is automatic only when it is the sole/default integration; mixed installation requires a manual `--force` opt-in. |
 
 ## Tooling extras
 
