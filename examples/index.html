@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -652,22 +652,24 @@ claude_provider        → LiteLLM gateway (company / Bedrock / mixed)
 codex_provider         → LiteLLM gateway (OpenAI-compatible)
 litellm_base_url       → https://litellm.your-company.internal
 include_sandbox        → no
-sdd_framework          → OpenSpec — lightweight, brownfield-first, npm-based
+sdd_framework          → Spec-Kit — structured, intent-driven, uv-based
 include_sql            → yes
 sql_dialect            → snowflake                      # or postgres, bigquery, ansi, …
 license                → Proprietary
 </code></pre></div>
 <p>After generation, the gateway token lives in your shell, never in the repo.
-Claude Code's base URL is already pinned in <code>.claude/settings.json</code>; only the
-token is needed in the shell. Codex needs both:</p>
+Claude Code's base URL is pinned in <code>.claude/settings.json</code>. Codex deliberately
+keeps provider routing user-scoped, so install the generated profile once per
+machine:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># in your ~/.zshrc or a sourced env file (NOT committed):</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_AUTH_TOKEN</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$LITELLM_TOKEN</span><span class="s2">&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$LITELLM_BASE_URL</span><span class="s2">&quot;</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$LITELLM_TOKEN</span><span class="s2">&quot;</span>
 
 <span class="nb">cd</span><span class="w"> </span>my-project
+mkdir<span class="w"> </span>-p<span class="w"> </span>~/.codex
+cp<span class="w"> </span>.codex/litellm.config.toml.example<span class="w"> </span>~/.codex/litellm.config.toml
 claude<span class="w">            </span><span class="c1"># picks up the token; base URL comes from .claude/settings.json</span>
-codex<span class="w">             </span><span class="c1"># picks up OPENAI_BASE_URL/API_KEY</span>
+codex<span class="w"> </span>--profile<span class="w"> </span>litellm
 </code></pre></div>
 <p>Both tools read the same <code>AGENTS.md</code> + <code>agent-guidelines/</code> + <code>skills/</code>. Use Claude
 Code in Plan Mode for design discussions, hand the resulting plan to Codex
@@ -773,7 +775,7 @@ models are reliably MVP-grade.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

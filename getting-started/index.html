@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -632,12 +632,12 @@
   pre-commit install</code>) need it; see
   <a href="https://docs.astral.sh/uv/getting-started/installation/">Astral's install guide</a>.</li>
 <li><strong>Unix-like shell</strong> — macOS, Linux, or Windows with <strong>WSL2 + Developer Mode</strong>.
-  One of the post-generation tasks rebuilds a <code>docs/skills</code> symlink via
-  <code>ln -s</code>, which requires symlink support. Plain Windows (PowerShell / cmd
-  without WSL2) is not supported.</li>
+  Post-generation tasks rebuild the <code>docs/skills</code> symlink and, when Codex or Pi
+  is selected, the <code>.agents/skills</code> discovery symlink via <code>ln -s</code>. Plain
+  Windows (PowerShell / cmd without WSL2) is not supported.</li>
 </ul>
 <h2 id="install-copier">Install Copier<a class="headerlink" href="#install-copier" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>copier
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span><span class="nv">copier</span><span class="o">==</span><span class="m">9</span>.17.1
 </code></pre></div>
 <h2 id="generate-a-new-project">Generate a new project<a class="headerlink" href="#generate-a-new-project" title="Permanent link">&para;</a></h2>
 <p><code>--trust</code> is required so the post-generation tasks (<code>git init</code>, <code>uv sync</code>,
@@ -721,7 +721,7 @@ the git hooks, so the generated project is ready for <code>just qa</code> immedi
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

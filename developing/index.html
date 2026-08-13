@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -632,7 +632,7 @@
 ├── copier.yml                      # prompts, tasks, exclude rules (_subdirectory: &quot;template&quot;)
 ├── README.md                       # GitHub landing page (dev)
 ├── .gitignore                      # dev gitignore
-├── .github/workflows/docs.yml      # deploys THIS site to GitHub Pages
+├── .github/workflows/              # verifies the template and deploys THIS docs site
 ├── .claude/                        # agent config for the template development
 ├── _dev/                           # all dev-only files (never copied into a generated project)
 │   ├── CHANGELOG.md                # template-eigener Changelog
@@ -656,25 +656,35 @@ and is never copied out. When you add documentation, the question is simply
 <em>"does it describe the template, or the product built from it?"</em>:
 template → <code>_dev/docs/</code>, product → <code>template/docs/</code>.</p>
 <h2 id="render-smoketest">Render smoketest<a class="headerlink" href="#render-smoketest" title="Permanent link">&para;</a></h2>
-<p><code>render-test</code> generates three representative scenarios into <code>/tmp</code>, then
-validates the rendered JSON configs and Docker-Compose files:</p>
+<p><code>render-test</code> generates eight representative scenarios into <code>/tmp</code>, validates
+the rendered configs and Docker-Compose files, and runs the generated project's
+real <code>just qa</code> plus strict <code>just docs-build</code> gates in the GitLab scenario. The
+scenario is staged first so Pre-Commit cannot return a false-positive "no files
+to check" result for a freshly initialized repository. A negative scenario also
+proves that an invalid project slug is rejected before tasks execute:</p>
 <div class="highlight"><pre><span></span><code>just<span class="w"> </span>-f<span class="w"> </span>_dev/justfile<span class="w"> </span>render-test
 </code></pre></div>
-<p>The four scenarios (see the justfile comments for full details):</p>
+<p>The eight scenarios (see the justfile comments for full details):</p>
 <ul>
 <li><strong>Test 1</strong> — Claude-Code-only, no sandbox (minimal path).</li>
 <li><strong>Test 2</strong> — full stack with Langfuse v3 + Crawl4AI (exercises every
   profile-gated <code>:?</code> guard).</li>
 <li><strong>Test 3</strong> — full stack with MLflow (the other Compose Jinja branch).</li>
-<li><strong>Test 4</strong> — all four agents + Context7 + Python 3.14 (covers Codex
-  <code>config.toml</code>, granular OpenCode permissions, Context7-conditional blocks,
-  and 3.14 tooling pins).</li>
+<li><strong>Test 4</strong> — all five agents + Context7 + Python 3.14 (covers Codex
+  <code>config.toml</code> and subagents, Pi skill discovery, granular OpenCode
+  permissions, Context7-conditional blocks, and 3.14 tooling pins).</li>
 <li><strong>Test 5</strong> — Codex (LiteLLM) + OpenCode (hybrid) + Context7=false + Python
   3.12 (covers Codex-LiteLLM AGENTS.md text, OpenCode hybrid model block,
   Context7 else-branch, and 3.12 tooling pins; no sandbox → fast).</li>
+<li><strong>Test 6</strong> — GitLab CI, with GitHub-only files absent.</li>
+<li><strong>Test 7</strong> — no CI/CD, with both provider surfaces absent.</li>
+<li><strong>Test 8</strong> — Pi-only + Spec-Kit (covers Pi selection, <code>.agents/skills</code>, and
+  the remaining SDD branch).</li>
 </ul>
 <p>The test runs with <code>--defaults</code>, so a shift in <code>copier.yml</code> defaults moves the
 covered scope with it instead of silently going stale.</p>
+<p>The repository's <code>Template CI</code> workflow runs this same command followed by the
+strict template documentation build on every push and pull request.</p>
 <h2 id="iterating-locally">Iterating locally<a class="headerlink" href="#iterating-locally" title="Permanent link">&para;</a></h2>
 <p>Generate from your working copy (Variant B) to eyeball a real render before
 pushing:</p>
@@ -747,7 +757,7 @@ the two never collide because they live in different repos.)</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

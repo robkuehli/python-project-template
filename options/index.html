@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -409,6 +409,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cicd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI/CD
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#spec-driven-development" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -628,6 +639,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cicd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI/CD
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#spec-driven-development" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -775,7 +797,7 @@ of the choice. Each selected agent unlocks a backend prompt.</p>
 <td><code>coding_agents</code></td>
 <td>multiselect</td>
 <td><code>claude_code</code>, <code>codex</code></td>
-<td>Claude Code (<code>.claude/</code>, <code>CLAUDE.md</code>), Codex CLI (AGENTS.md only), OpenCode (<code>.opencode/</code> + <code>opencode.json</code>), Aider (<code>.aider.conf.yml</code>).</td>
+<td>Claude Code (<code>.claude/</code>, <code>CLAUDE.md</code>), Codex CLI (<code>.codex/</code>), Pi (<code>AGENTS.md</code> + <code>.agents/skills</code>), OpenCode (<code>.opencode/</code> + <code>opencode.json</code>), Aider (<code>.aider.conf.yml</code>).</td>
 </tr>
 <tr>
 <td><code>claude_provider</code></td>
@@ -817,7 +839,7 @@ of the choice. Each selected agent unlocks a backend prompt.</p>
 <td><code>include_context7</code></td>
 <td>bool</td>
 <td><code>false</code></td>
-<td><strong>conditional</strong> (any of Claude Code, Codex, OpenCode selected). Enable the Context7 MCP server — fetches current library docs into the model context (solves stale-training-data for Python libs). Opt-in: requires Node on PATH; queries leave the sandbox (external service <code>mcp.context7.com</code>); adds a supply-chain factor (OWASP ASI04). Not available for Aider (no MCP support).</td>
+<td><strong>conditional</strong> (any of Claude Code, Codex, OpenCode selected). Enable the Context7 MCP server — fetches current library docs into the model context. Opt-in: requires Node on PATH; queries leave the sandbox; adds a supply-chain factor (OWASP ASI04). Pi and Aider have no built-in MCP support.</td>
 </tr>
 <tr>
 <td><code>litellm_base_url</code></td>
@@ -865,8 +887,27 @@ of the choice. Each selected agent unlocks a backend prompt.</p>
 <tr>
 <td><code>sandbox_auto_init</code></td>
 <td>bool</td>
-<td><code>true</code></td>
-<td><strong>conditional</strong> (<code>include_sandbox</code>). Auto-generate sandbox secrets into a git-ignored <code>.env</code> now (needs <code>--trust</code>); otherwise run <code>just sandbox-init</code> yourself.</td>
+<td><code>false</code></td>
+<td><strong>conditional</strong> (<code>include_sandbox</code>). Secure default: do not write plaintext secrets. Prefer <code>op://…</code> 1Password references in <code>.env</code> plus <code>op run --env-file=.env -- just sandbox-up</code>; opt in only when local random plaintext values are acceptable.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cicd">CI/CD<a class="headerlink" href="#cicd" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Prompt</th>
+<th>Type</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cicd_provider</code></td>
+<td>choice</td>
+<td><code>github_actions</code></td>
+<td><strong>GitHub Actions</strong>: <code>.github/workflows/ci.yml</code> runs canonical <code>just qa</code>, <code>docs.yml</code> builds strictly and deploys to GitHub Pages, plus <code>dependabot.yml</code>. <strong>GitLab CI</strong>: <code>.gitlab-ci.yml</code> runs canonical <code>just qa</code> and strict <code>just docs-build</code>; packaging and deployment stay project-specific. <strong>None</strong>: no CI/CD files.</td>
 </tr>
 </tbody>
 </table>
@@ -885,13 +926,13 @@ of the choice. Each selected agent unlocks a backend prompt.</p>
 <td><code>sdd_framework</code></td>
 <td>choice</td>
 <td><code>none</code></td>
-<td>None (informal <code>/spec</code>) / OpenSpec (lightweight, brownfield, npm) / Spec-Kit (heavier, greenfield, uv).</td>
+<td><strong>conditional</strong> (Claude Code, Codex, Pi, or OpenCode selected). None (informal <code>/spec</code>) / Spec-Kit (structured, intent-driven, uv). Aider has no Spec-Kit integration.</td>
 </tr>
 <tr>
 <td><code>sdd_install_agent</code></td>
 <td>choice</td>
-<td>first enabled agent (claude &gt; codex &gt; opencode)</td>
-<td><strong>conditional</strong> (<code>sdd_framework != none</code>). Which agent gets the SDD slash-commands.</td>
+<td>first enabled agent (claude &gt; codex &gt; pi &gt; opencode)</td>
+<td><strong>conditional</strong> (<code>sdd_framework != none</code>). Which agent gets the Spec-Kit integration.</td>
 </tr>
 </tbody>
 </table>
@@ -926,6 +967,12 @@ of the choice. Each selected agent unlocks a backend prompt.</p>
 </tr>
 </tbody>
 </table>
+<p>Identity values are validated before rendering: repository slugs must be
+lowercase kebab-case, package names must be non-keyword Python identifiers,
+names/descriptions must be non-empty single lines, email and GitHub owner fields
+must match their expected shape, and backend URLs accept only single-line
+<code>http(s)</code> values without template/quoting characters. Structured outputs then
+serialize free text with Jinja's JSON-compatible quoting.</p>
 <h2 id="license">License<a class="headerlink" href="#license" title="Permanent link">&para;</a></h2>
 <p>The <code>license</code> prompt drives <code>pyproject.toml</code>:</p>
 <ul>
@@ -938,12 +985,12 @@ of the choice. Each selected agent unlocks a backend prompt.</p>
 <p>Changing it later means re-running <code>just update</code> and re-answering the prompt, or
 editing the <code>[project]</code> license field and classifiers by hand.</p>
 <h2 id="hidden-computed-inputs">Hidden computed inputs<a class="headerlink" href="#hidden-computed-inputs" title="Permanent link">&para;</a></h2>
-<p><code>copier.yml</code> also defines <code>shared_deny_bash</code>, <code>shared_deny_read</code>,
-<code>shared_deny_write</code>, and <code>shared_ask_bash</code> with <code>when: false</code>. These are <strong>not</strong>
-prompted — they are the single source of truth for the agent permission lists and
-are injected into the render context so every tool config (<code>.claude/settings.json</code>,
-<code>opencode.json</code> granular <code>bash</code>/<code>edit</code>/<code>read</code> object syntax) stays in lockstep.
-Edit them in <code>copier.yml</code>; do not duplicate them per tool.</p>
+<p><code>copier.yml</code> also defines <code>tool_versions</code>, <code>shared_allow_bash</code>,
+<code>shared_deny_bash</code>, <code>shared_deny_read</code>, <code>shared_deny_write</code>, and
+<code>shared_ask_bash</code> with <code>when: false</code>. These are <strong>not</strong> prompted: the first map
+pins executable tooling, while the permission lists are injected into
+<code>.claude/settings.json</code> and <code>opencode.json</code> so both stay in lockstep. Edit the
+canonical values in <code>copier.yml</code>; do not duplicate them per tool.</p>
 
 
 
@@ -1002,7 +1049,7 @@ Edit them in <code>copier.yml</code>; do not duplicate them per tool.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
