@@ -23,15 +23,13 @@ Generating a project produces:
   All tool configs live in `pyproject.toml`, which the hooks read.
 - **MkDocs** (Material) with **mkdocstrings** API docs and a changelog page.
   Content is split along [Diátaxis](https://diataxis.fr/).
-- **GitHub Actions**: `ci.yml` (uv + pre-commit + pytest) and `docs.yml`
-  (MkDocs → GitHub Pages), plus **Dependabot**.
-- Agent setup: a root **`AGENTS.md`** (read by Claude Code, Codex CLI, Aider and
-  OpenCode), plus optional `.claude/`, `.opencode/` (+ `opencode.json`), and
-  `.aider.conf.yml`. Backend per tool: subscription / LiteLLM gateway / Ollama.
-  Feature parity across tools: subagents (researcher / reviewer /
-  security-auditor), Verify-on-Stop hooks/plugins, granular permissions (where
-  the tool supports them), and the Context7 MCP server (opt-in via
-  `include_context7`).
+- Optional CI/CD: **GitHub Actions** (`ci.yml`, Pages, Dependabot), **GitLab CI**,
+  or no generated CI files.
+- Agent setup: a root **`AGENTS.md`** shared by Claude Code, Codex CLI, Pi,
+  Aider, and OpenCode, plus the runtime glue each selected tool needs:
+  `.claude/`, `.codex/`, `.opencode/` + `opencode.json`, or `.aider.conf.yml`.
+  Capabilities remain runtime-native: richer runtimes get subagents, hooks,
+  permissions, or Context7 where supported; Pi and Aider keep a smaller surface.
 - A **`agent-guidelines/`** folder (testing / documentation / changelog standards) and
   a **`skills/`** folder with the 9 workflow skills (`/explore`, `/spec`, `/plan`,
   `/test`, `/delegate`, `/review`, `/verify`, `/debug`, `/capture`) in

@@ -11,7 +11,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
@@ -19,12 +19,12 @@ jobs:
         # setup-uv v8 stopped publishing moving major/minor tags as a
         # supply-chain hardening measure — pin to a full version and bump
         # deliberately. See https://github.com/astral-sh/setup-uv/releases.
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           python-version: "{{ python_version }}"
 
       - name: Install docs dependencies
-        run: uv sync --group docs
+        run: uv sync --group docs --frozen
 
       - name: Build & deploy to GitHub Pages
         run: uv run mkdocs gh-deploy --force --strict

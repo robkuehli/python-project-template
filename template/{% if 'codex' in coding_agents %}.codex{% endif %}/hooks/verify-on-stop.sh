@@ -11,7 +11,15 @@
 # Parity mit .claude/hooks/verify-on-stop.sh und .opencode/plugins/verify-on-stop.ts.
 set -euo pipefail
 
-PROJECT_DIR="${CODEX_PROJECT_DIR:-$PWD}"
+hook_input="$(cat)"
+
+# A blocking Stop hook creates a continuation turn. Do not recursively block
+# that continuation; Codex exposes this state in the hook input.
+if printf '%s' "$hook_input" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then
+  exit 0
+fi
+
+PROJECT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$PROJECT_DIR" || exit 0
 
 # Kein Git-Repo → nichts zu verifizieren
@@ -31,6 +39,6 @@ if [ "${CODEX_VERIFY_HARD_BLOCK:-0}" = "1" ] && [ -f justfile ] && command -v ju
   exit 0
 fi
 
-# Soft-Modus: Reminder ohne Block
-echo "📋 Uncommitted changes detected. Run \`just qa\` and verify with evidence before declaring done." >&2
+# Soft mode: Stop expects JSON on stdout; surface a non-blocking warning.
+printf '%s\n' '{"systemMessage":"Uncommitted changes detected. Run `just qa` and verify with evidence before declaring done."}'
 exit 0

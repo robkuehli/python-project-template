@@ -17,12 +17,12 @@ default:
 
 # Serve the template docs locally with live reload.
 docs:
-    uv run --with 'mkdocs-material>=9.5' \
+    uv run --with 'mkdocs-material==9.7.7' \
         mkdocs serve -f _dev/mkdocs.yml
 
 # Strict build into _dev/site/.
 docs-build:
-    uv run --with 'mkdocs-material>=9.5' \
+    uv run --with 'mkdocs-material==9.7.7' \
         mkdocs build --strict -f _dev/mkdocs.yml
 
 # Notes:
@@ -33,11 +33,14 @@ docs-build:
 # - Test 3: Full-Stack mit MLflow — anderer Compose-Jinja-Branch
 #   (`elif sandbox_observability == 'mlflow'`) als Langfuse und der
 #   eigentliche copier.yml-Default.
-# - Test 4: Alle 4 Agents + Context7 + Python 3.14 — deckt Codex-Config,
+# - Test 4: Alle 5 Agents + Context7 + Python 3.14 — deckt Codex-Config,
 #   granular OpenCode permissions, Context7-conditional, und 3.14-Pins ab.
 # - Test 5: Codex(LiteLLM) + OpenCode(hybrid) + Context7=false + Python 3.12 —
 #   deckt Codex-LiteLLM-AGENTS.md-Text, OpenCode-hybrid-Modellblock,
 #   Context7-Else-Branch und 3.12-Pins ab (kein Sandbox → schnell).
+# - Test 6/7: GitLab-CI bzw. kein CI/CD.
+# - Test 8: Pi-only + Spec-Kit — deckt Pi-Auswahl, `.agents/skills` und den
+#   verbleibenden SDD-Branch ab.
 # - Compose-Check braucht `--profile dev --profile trace` — sonst
 #   filtert Compose alle profil-gegateten Services raus und der Test
 #   wird zum False-Pass (Output `services: {}`).
@@ -45,45 +48,56 @@ docs-build:
 #   eine Default-Verschiebung verschiebt den Coverage-Scope mit, ohne
 #   dass der Test rot wird.
 
-# Render-Smoketest: fünf Copier-Szenarien + JSON- + Compose-Validierung.
+# Render-Smoketest: acht Copier-Szenarien + Config- + Compose-Validierung.
 # Run from repo root: `just -f _dev/justfile render-test`.
 render-test:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    rm -rf /tmp/render-test-1 /tmp/render-test-2 /tmp/render-test-3 /tmp/render-test-4 /tmp/render-test-5 /tmp/render-test-6 /tmp/render-test-7
+    rm -rf /tmp/render-test-1 /tmp/render-test-2 /tmp/render-test-3 /tmp/render-test-4 /tmp/render-test-5 /tmp/render-test-6 /tmp/render-test-7 /tmp/render-test-8 /tmp/render-test-invalid /tmp/render-test-home /tmp/render-test-empty-home /tmp/render-test-user-compose.yml
 
-    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+    # Invalid identifiers must fail before any project files or tasks execute.
+    if uv tool run --from copier==9.17.1 copier copy --defaults \
+      --data project_name="Invalid" \
+      --data project_slug="Invalid Slug" \
+      . /tmp/render-test-invalid >/dev/null 2>&1; then
+        echo "FAIL: invalid project_slug passed Copier validation"
+        exit 1
+    fi
+
+    uv tool run --from copier==9.17.1 copier copy --trust --defaults --vcs-ref=HEAD \
       --data project_name="Test1" \
       --data coding_agents='["claude_code"]' \
       --data claude_provider=subscription \
       --data include_sandbox=false \
       . /tmp/render-test-1
 
-    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+    uv tool run --from copier==9.17.1 copier copy --trust --defaults --vcs-ref=HEAD \
       --data project_name="Test2" \
-      --data coding_agents='["claude_code","opencode","aider"]' \
+      --data coding_agents='["claude_code","codex","opencode","aider"]' \
       --data include_sandbox=true \
+      --data sandbox_auto_init=true \
       --data sandbox_observability=langfuse \
       --data include_crawl4ai=true \
       . /tmp/render-test-2
 
-    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+    uv tool run --from copier==9.17.1 copier copy --trust --defaults --vcs-ref=HEAD \
       --data project_name="Test3" \
       --data coding_agents='["claude_code","opencode"]' \
       --data include_sandbox=true \
+      --data sandbox_auto_init=true \
       --data sandbox_observability=mlflow \
       . /tmp/render-test-3
 
-    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+    uv tool run --from copier==9.17.1 copier copy --trust --defaults --vcs-ref=HEAD \
       --data project_name="Test4" \
-      --data coding_agents='["claude_code","codex","opencode","aider"]' \
+      --data coding_agents='["claude_code","codex","pi","opencode","aider"]' \
       --data include_context7=true \
       --data python_version="3.14" \
       --data include_sandbox=false \
       . /tmp/render-test-4
 
-    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+    uv tool run --from copier==9.17.1 copier copy --trust --defaults --vcs-ref=HEAD \
       --data project_name="Test5" \
       --data coding_agents='["codex","opencode"]' \
       --data codex_provider=litellm \
@@ -95,8 +109,10 @@ render-test:
       . /tmp/render-test-5
 
     # Test 6: GitLab CI — .gitlab-ci.yml present, .github/workflows absent.
-    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+    uv tool run --from copier==9.17.1 copier copy --trust --defaults --vcs-ref=HEAD \
       --data project_name="Test6" \
+      --data project_description='A "quoted" project.' \
+      --data author_name="O'Reilly" \
       --data coding_agents='["claude_code"]' \
       --data claude_provider=subscription \
       --data include_sandbox=false \
@@ -104,7 +120,7 @@ render-test:
       . /tmp/render-test-6
 
     # Test 7: No CI/CD — neither provider generates files.
-    uv tool run copier copy --trust --defaults --vcs-ref=HEAD \
+    uv tool run --from copier==9.17.1 copier copy --trust --defaults --vcs-ref=HEAD \
       --data project_name="Test7" \
       --data coding_agents='["claude_code"]' \
       --data claude_provider=subscription \
@@ -112,9 +128,22 @@ render-test:
       --data cicd_provider=none \
       . /tmp/render-test-7
 
+    # Test 8: Pi-only + Spec-Kit — native skill discovery and remaining SDD path.
+    uv tool run --from copier==9.17.1 copier copy --trust --defaults --vcs-ref=HEAD \
+      --data project_name="Test8" \
+      --data coding_agents='["pi"]' \
+      --data include_sandbox=false \
+      --data sdd_framework=spec-kit \
+      --data sdd_install_agent=pi \
+      . /tmp/render-test-8
+
     python3 -m json.tool /tmp/render-test-1/.claude/settings.json >/dev/null
+    bash -n /tmp/render-test-1/.claude/scripts/statusline.sh
+    rg -q 'ccusage@20\.0\.19' /tmp/render-test-1/.claude/scripts/statusline.sh
+    ! rg -q '\{\{ tool_versions\.' /tmp/render-test-1/.claude/scripts/statusline.sh
     python3 -m json.tool /tmp/render-test-2/.claude/settings.json >/dev/null
     python3 -m json.tool /tmp/render-test-2/opencode.json >/dev/null
+    python3 -c "import tomllib; tomllib.load(open('/tmp/render-test-2/.codex/config.toml','rb'))"
     python3 -m json.tool /tmp/render-test-3/.claude/settings.json >/dev/null
     python3 -m json.tool /tmp/render-test-3/opencode.json >/dev/null
     python3 -m json.tool /tmp/render-test-4/.claude/settings.json >/dev/null
@@ -124,9 +153,15 @@ render-test:
     # Codex config.toml is TOML — validate via python tomllib.
     python3 -c "import tomllib; tomllib.load(open('/tmp/render-test-4/.codex/config.toml','rb'))"
     python3 -c "import tomllib; tomllib.load(open('/tmp/render-test-5/.codex/config.toml','rb'))"
+    python3 -c "import tomllib; d=tomllib.load(open('/tmp/render-test-4/.codex/config.toml','rb')); assert d['model']=='gpt-5.6'; assert d['default_permissions']==':workspace'; assert 'sandbox_mode' not in d"
+    python3 -c "import glob,tomllib; files=glob.glob('/tmp/render-test-4/.codex/agents/*.toml'); assert len(files)==3; [({'name','description','developer_instructions'} <= tomllib.load(open(path,'rb')).keys()) or (_ for _ in ()).throw(AssertionError(path)) for path in files]"
+    python3 -c "import tomllib; d=tomllib.load(open('/tmp/render-test-5/.codex/litellm.config.toml.example','rb')); assert d['model_provider']=='litellm'; assert d['model_providers']['litellm']['base_url']"
+    bash -n /tmp/render-test-4/.codex/hooks/verify-on-stop.sh
+    test -L /tmp/render-test-4/.agents/skills
+    test "$(readlink /tmp/render-test-4/.agents/skills)" = "../skills"
 
     # Aider YAML validate (uv tool run avoids host-Python missing yaml).
-    uv tool run --from pyyaml python3 -c "import yaml; yaml.safe_load(open('/tmp/render-test-4/.aider.conf.yml'))"
+    uv tool run --from pyyaml==6.0.3 python3 -c "import yaml; yaml.safe_load(open('/tmp/render-test-4/.aider.conf.yml'))"
 
     # cd in den Render-Pfad, damit die von `sandbox-init` generierte
     # .env automatisch aufgegriffen wird und die :?-Guards greifen.
@@ -135,13 +170,67 @@ render-test:
     (cd /tmp/render-test-3 \
         && docker compose --profile dev --profile trace config) >/dev/null
 
+    # Global user instructions are opt-in, source-selective, read-only, and
+    # local-only. Codex's override file must win over its regular AGENTS.md.
+    mkdir -p /tmp/render-test-home/.claude/rules /tmp/render-test-home/.codex
+    touch /tmp/render-test-home/.claude/CLAUDE.md \
+      /tmp/render-test-home/.claude/rules/preferences.md \
+      /tmp/render-test-home/.codex/AGENTS.md \
+      /tmp/render-test-home/.codex/AGENTS.override.md
+    (cd /tmp/render-test-2 \
+        && printf 'yes\n' | HOME=/tmp/render-test-home just sandbox-enable-user-instructions)
+    test -f /tmp/render-test-2/docker-compose.override.yml
+    rg -q '^docker-compose\.override\.yml$' /tmp/render-test-2/.gitignore
+    rg -q '\$\{HOME\}/\.claude/CLAUDE\.md' /tmp/render-test-2/docker-compose.override.yml
+    rg -q '\$\{HOME\}/\.claude/rules' /tmp/render-test-2/docker-compose.override.yml
+    rg -q '\$\{HOME\}/\.codex/AGENTS\.override\.md' /tmp/render-test-2/docker-compose.override.yml
+    ! rg -q '\$\{HOME\}/\.codex/AGENTS\.md' /tmp/render-test-2/docker-compose.override.yml
+    ! rg -q 'source:.*\.(claude|codex)["/]?$' /tmp/render-test-2/docker-compose.override.yml
+    (cd /tmp/render-test-2 \
+        && DOCKER_CONFIG="$HOME/.docker" HOME=/tmp/render-test-home \
+          docker compose --profile dev --profile trace config) \
+      > /tmp/render-test-user-compose.yml
+    uv tool run --from pyyaml==6.0.3 python3 -c "import yaml; d=yaml.safe_load(open('/tmp/render-test-user-compose.yml')); v={x['target']: x for x in d['services']['agent']['volumes']}; expected={'/home/agent/.claude/CLAUDE.md','/home/agent/.claude/rules','/home/agent/.codex/AGENTS.override.md','/workspace/docker-compose.override.yml'}; assert expected <= v.keys(); assert all(v[t].get('read_only') is True for t in expected); assert '/home/agent/.codex/AGENTS.md' not in v"
+    (cd /tmp/render-test-2 \
+        && HOME=/tmp/render-test-home just sandbox-enable-user-instructions) >/dev/null
+
+    rm /tmp/render-test-2/docker-compose.override.yml
+    if (cd /tmp/render-test-2 \
+        && printf 'no\n' | HOME=/tmp/render-test-home \
+          just sandbox-enable-user-instructions) >/dev/null 2>&1; then
+        echo "FAIL: user-instruction helper accepted an explicit rejection"
+        exit 1
+    fi
+    test ! -e /tmp/render-test-2/docker-compose.override.yml
+    printf '%s\n' 'services: {} # unmanaged sentinel' \
+      > /tmp/render-test-2/docker-compose.override.yml
+    if (cd /tmp/render-test-2 \
+        && HOME=/tmp/render-test-home just sandbox-enable-user-instructions) \
+      >/dev/null 2>&1; then
+        echo "FAIL: user-instruction helper overwrote an unmanaged override"
+        exit 1
+    fi
+    rg -Fxq 'services: {} # unmanaged sentinel' \
+      /tmp/render-test-2/docker-compose.override.yml
+
+    mkdir -p /tmp/render-test-empty-home
+    if (cd /tmp/render-test-3 \
+        && HOME=/tmp/render-test-empty-home just sandbox-enable-user-instructions) >/dev/null 2>&1; then
+        echo "FAIL: user-instruction helper succeeded without supported sources"
+        exit 1
+    fi
+    test ! -e /tmp/render-test-3/docker-compose.override.yml
+
     # Test 6: GitLab CI file present + valid, GitHub Actions absent.
     python3 -m json.tool /tmp/render-test-6/.claude/settings.json >/dev/null
+    python3 -c "import tomllib; d=tomllib.load(open('/tmp/render-test-6/pyproject.toml','rb')); assert d['project']['description']=='A \"quoted\" project.'; assert d['project']['authors'][0]['name']==\"O'Reilly\""
+    uv tool run --from pyyaml==6.0.3 python3 -c "import yaml; d=yaml.safe_load(open('/tmp/render-test-6/mkdocs.yml')); assert d['site_description']=='A \"quoted\" project.'"
     test -f /tmp/render-test-6/.gitlab-ci.yml \
         || { echo "FAIL: .gitlab-ci.yml missing in render-test-6"; exit 1; }
     test ! -f /tmp/render-test-6/.github/workflows/ci.yml \
         || { echo "FAIL: ci.yml must not exist in render-test-6"; exit 1; }
-    uv tool run --from pyyaml python3 -c "import yaml; d=yaml.safe_load(open('/tmp/render-test-6/.gitlab-ci.yml')); assert set(d.get('stages',[]))=={'lint','test','build','push','deploy'}, d.get('stages')"
+    uv tool run --from pyyaml==6.0.3 python3 -c "import yaml; d=yaml.safe_load(open('/tmp/render-test-6/.gitlab-ci.yml')); assert d.get('stages')==['qa','docs'], d.get('stages'); assert d['qa']['script']==['just qa']; assert d['docs']['script']==['just docs-build']"
+    ! rg -q "docker build|docker push|kubectl" /tmp/render-test-6/.gitlab-ci.yml
 
     # Test 7: no CI files at all.
     python3 -m json.tool /tmp/render-test-7/.claude/settings.json >/dev/null
@@ -152,10 +241,26 @@ render-test:
     test ! -f /tmp/render-test-7/.github/dependabot.yml \
         || { echo "FAIL: dependabot.yml must not exist in render-test-7"; exit 1; }
 
-    # Regression: Tests 1-5 still get GitHub Actions (default provider).
+    # Test 8: Pi support + Spec-Kit docs, with no removed OpenSpec surface.
+    test -L /tmp/render-test-8/.agents/skills
+    test -f /tmp/render-test-8/docs/how-to/spec-driven-development.md
+    test -f /tmp/render-test-8/.pi/prompts/speckit.constitution.md
+    test -f /tmp/render-test-8/.specify/integration.json
+    rg -q "Spec-Kit" /tmp/render-test-8/docs/how-to/spec-driven-development.md
+    ! rg -qi "openspec|open spec" /tmp/render-test-8
+
+    # Regression: default-provider scenarios still get GitHub Actions.
     test -f /tmp/render-test-1/.github/workflows/ci.yml \
         || { echo "FAIL: ci.yml missing in render-test-1 (github_actions default regression)"; exit 1; }
     test -f /tmp/render-test-1/.github/dependabot.yml \
         || { echo "FAIL: dependabot.yml missing in render-test-1"; exit 1; }
+
+    # Real generated-project gate. Staging is essential because pre-commit's
+    # --all-files only examines files known to Git; without it a fresh render
+    # reports "no files to check" and produces a false-positive result.
+    (cd /tmp/render-test-6 \
+        && git add -A \
+        && just qa \
+        && just docs-build)
 
     echo "render-test passed"

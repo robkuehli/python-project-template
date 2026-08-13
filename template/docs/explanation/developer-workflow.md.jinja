@@ -83,11 +83,12 @@ remember the first two:
 - **Skills (the WHAT):** the 9 verbs above. Single source of truth, tool-agnostic.
 - **Modes (the WHERE):** typically two — an architect seat (read-only, planning)
   and a coder seat (implementation). In Claude Code these are *Plan Mode* +
-  *Default*; in OpenCode the `plan` and `build` primary modes; in Aider/Codex
-  the same separation lives in the conversation rather than the UI.
-- **Subagents (the HOW):** read-only specialists (`researcher`, `reviewer`,
-  `security-auditor`) that the primary mode spawns automatically. Not your
-  cognitive load — let the runtime handle them.
+  *Default*; in OpenCode the `plan` and `build` primary modes; in Codex, Pi,
+  and Aider the same separation can live in the conversation.
+- **Subagents (the HOW):** where the selected runtime supports them, read-only
+  specialists (`researcher`, `reviewer`, `security-auditor`) can isolate recon
+  and review. Pi needs an extension for subagents; Aider has no configured
+  subagent surface in this template.
 
 ## Where to start
 

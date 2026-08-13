@@ -7,68 +7,83 @@
 #     isolation comes from the lack of secret mounts, resource limits,
 #     and the project's permission/deny rules — not from network walls.
 
-ARG PYTHON_VERSION=3.13
-# Minor (3.12/3.13) is pinned via the Copier `python_version` choice; the patch
-# release floats with the upstream Debian-slim rebuild. For strict reproducibility
-# (e.g. in CI artefacts), pin to a digest, e.g.:
-#   FROM python:3.13.5-slim@sha256:<digest>
-FROM python:${PYTHON_VERSION}-slim
+# Tags remain for human readability; manifest digests make both build stages
+# immutable and keep their Debian base compatible.
+FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436 AS node
+FROM python:{{ python_version }}-slim-bookworm@sha256:{% if python_version == '3.12' %}4766d8b510c428e595d74b9cc5bbb2fae8e26316fffb4adc89908d79aacd58a2{% elif python_version == '3.13' %}00faa2debb87529f9f0764e9491d8ba400a3678976616c3bd7cb193745ac20d1{% else %}23c59390fc717bf09f9336908199a0ae75d9c4264bf296123f94ad772fea3b52{% endif %}
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-# --- System packages (and Node, needed by every npm-based agent) -------------
+# --- System packages + Node (copied from the pinned build stage) -------------
+COPY --from=node /usr/local/ /usr/local/
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git curl ca-certificates build-essential ripgrep jq \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # --- uv (fast Python package manager) ---------------------------------------
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
-    && mv /root/.local/bin/uv /usr/local/bin/uv \
-    && mv /root/.local/bin/uvx /usr/local/bin/uvx
+RUN python -m pip install --break-system-packages --no-cache-dir uv=={{ tool_versions.uv }}
 
 # --- just (task runner) -----------------------------------------------------
-RUN curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \
-    | bash -s -- --to /usr/local/bin
+RUN UV_TOOL_BIN_DIR=/usr/local/bin UV_TOOL_DIR=/opt/uv/tools \
+    uv tool install rust-just=={{ tool_versions.just }} \
+    && chmod -R a+rX /opt/uv/tools
 
 # --- Agent CLIs (only the selected ones) ------------------------------------
 {%- if 'claude_code' in coding_agents %}
-RUN npm install -g @anthropic-ai/claude-code
+RUN npm install -g @anthropic-ai/claude-code@{{ tool_versions.claude_code }}
 {%- endif %}
 {%- if 'codex' in coding_agents %}
-RUN npm install -g @openai/codex
+RUN npm install -g @openai/codex@{{ tool_versions.codex }}
+{%- endif %}
+{%- if 'pi' in coding_agents %}
+RUN npm install -g --ignore-scripts @earendil-works/pi-coding-agent@{{ tool_versions.pi }}
 {%- endif %}
 {%- if 'opencode' in coding_agents %}
-RUN npm install -g opencode-ai
+RUN npm install -g opencode-ai@{{ tool_versions.opencode }}
 {%- endif %}
 {%- if 'aider' in coding_agents %}
-RUN python -m pip install --break-system-packages --no-cache-dir aider-chat
+RUN python -m pip install --break-system-packages --no-cache-dir aider-chat=={{ tool_versions.aider }}
 {%- endif %}
 
 # --- Spec-Driven Development CLI (only when selected) -----------------------
-{%- if sdd_framework == 'openspec' %}
-RUN npm install -g @fission-ai/openspec@latest \
-    && openspec --version
-{%- elif sdd_framework == 'spec-kit' %}
+{%- if sdd_framework == 'spec-kit' %}
 # Install into system-wide locations so the non-root `agent` user can run it.
-# The smoke-test (`specify check`) catches permission/path issues at build
-# time instead of at first agent run.
+# `specify version` and `specify integration list` catch installation and
+# integration-discovery issues after the image is built.
 RUN UV_TOOL_BIN_DIR=/usr/local/bin UV_TOOL_DIR=/opt/uv/tools \
     uv tool install specify-cli \
-        --from git+https://github.com/github/spec-kit.git \
+        --from git+https://github.com/github/spec-kit.git@{{ tool_versions.spec_kit_ref }} \
     && chmod -R a+rX /opt/uv/tools \
     && specify --help >/dev/null
 {%- endif %}
 
 # --- Validation toolchain (matches pre-commit) ------------------------------
 RUN python -m pip install --break-system-packages --no-cache-dir \
-        pre-commit pytest pytest-cov ruff mypy
+        pre-commit=={{ tool_versions.pre_commit }} \
+        pytest=={{ tool_versions.pytest }} \
+        pytest-cov=={{ tool_versions.pytest_cov }} \
+        ruff=={{ tool_versions.ruff }} \
+        mypy=={{ tool_versions.mypy }}
 
 # --- non-root agent user ----------------------------------------------------
 RUN useradd -m -u 1000 -s /bin/bash agent
+{%- if 'codex' in coding_agents and codex_provider == 'litellm' %}
+# Provider routing is user-scoped in Codex and cannot live in the repository
+# `.codex/config.toml`. Seed the sandbox user's profile without baking a token.
+RUN mkdir -p /home/agent/.codex \
+    && printf '%s\n' \
+        'model_provider = "litellm"' \
+        '' \
+        '[model_providers.litellm]' \
+        'name = "LiteLLM gateway"' \
+        'base_url = "{{ litellm_base_url }}"' \
+        'env_key = "OPENAI_API_KEY"' \
+        'wire_api = "responses"' \
+        > /home/agent/.codex/litellm.config.toml \
+    && chown -R agent:agent /home/agent/.codex
+{%- endif %}
 USER agent
 ENV HOME=/home/agent \
     PATH="/home/agent/.local/bin:${PATH}" \

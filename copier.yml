@@ -3,7 +3,7 @@
 #
 # Docs:  https://copier.readthedocs.io
 # Usage:
-#   uv tool install copier
+#   uv tool install copier==9.17.1
 #   copier copy --trust gh:robkuehli/python-project-template path/to/new-project
 #
 # The actual template lives in the `template/` subdirectory.
@@ -52,24 +52,29 @@ _tasks:
     {%- endif %}
   - "uv sync"
   - "uv run pre-commit install"
+  # Codex and Pi both discover repository skills under `.agents/skills`.
+  # Keep `skills/` as the human-facing canonical directory and expose it at
+  # the native discovery path without duplicating the skill files.
+  - |
+    {% if 'codex' in coding_agents or 'pi' in coding_agents -%}
+    mkdir -p .agents
+    if [ ! -e .agents/skills ] && [ ! -L .agents/skills ]; then
+      ln -s ../skills .agents/skills
+    fi
+    {%- else -%}
+    true
+    {%- endif %}
   # SDD bootstrap — runs `init` non-interactively when the CLI is available.
   # No-op for sdd_framework=none. Both the missing-CLI branch and the
   # init-failure branch print WARN-only so generation never hard-fails on
   # a missing host-level prereq or a future flag rename.
   - |
-    {% if sdd_framework == 'openspec' -%}
-    if command -v openspec >/dev/null 2>&1; then
-      openspec init --tools {{ sdd_install_agent }} --force \
-        || echo "WARN: openspec init failed (CLI may have renamed flags or rejected --tools {{ sdd_install_agent }}). Re-run manually; see docs/how-to/spec-driven-development.md.";
-    else
-      echo "WARN: openspec CLI not found on PATH. Install via 'npm i -g @fission-ai/openspec@latest' and run 'openspec init --tools {{ sdd_install_agent }} --force'. See docs/how-to/spec-driven-development.md.";
-    fi
-    {%- elif sdd_framework == 'spec-kit' -%}
+    {% if sdd_framework == 'spec-kit' -%}
     if command -v specify >/dev/null 2>&1; then
-      specify init . --here --integration {{ sdd_install_agent }} --force \
+      specify init . --here --integration {{ sdd_install_agent }} --force --ignore-agent-tools \
         || echo "WARN: specify init failed. Re-run manually; see docs/how-to/spec-driven-development.md.";
     else
-      echo "WARN: specify CLI not found on PATH. Install via 'uv tool install specify-cli --from git+https://github.com/github/spec-kit.git' and run 'specify init . --here --integration {{ sdd_install_agent }} --force'. See docs/how-to/spec-driven-development.md.";
+      echo "WARN: specify CLI not found on PATH. Install via 'uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@{{ tool_versions.spec_kit_ref }}' and run 'specify init . --here --integration {{ sdd_install_agent }} --force --ignore-agent-tools'. See docs/how-to/spec-driven-development.md.";
     fi
     {%- else -%}
     true
@@ -81,36 +86,65 @@ _tasks:
 project_name:
   type: str
   help: "Human-readable project name (e.g. 'My Awesome Project')"
+  validator: >-
+    {% if not project_name.strip() or not (project_name | regex_search('^[^\r\n]{1,100}$')) %}
+    Use a non-empty, single-line project name of at most 100 characters.
+    {% endif %}
 
 project_slug:
   type: str
   help: "Repository / directory name (kebab-case)"
   default: "{{ project_name | lower | replace(' ', '-') | replace('_', '-') }}"
+  validator: >-
+    {% if project_slug | length > 63 or not (project_slug | regex_search('^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$')) %}
+    Use at most 63 lowercase letters, digits, and single dashes; start with a letter.
+    {% endif %}
 
 package_name:
   type: str
   help: "Importable Python package name (snake_case)"
   default: "{{ project_slug | lower | replace('-', '_') }}"
+  validator: >-
+    {% set keywords = ['false', 'none', 'true', 'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield'] %}
+    {% if package_name | length > 64 or package_name in keywords or not (package_name | regex_search('^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$')) %}
+    Use a non-keyword Python identifier of at most 64 lowercase letters, digits, and single underscores.
+    {% endif %}
 
 project_description:
   type: str
   help: "One-line description of the project"
   default: "A standard Python project."
+  validator: >-
+    {% if not project_description.strip() or not (project_description | regex_search('^[^\r\n]{1,200}$')) %}
+    Use a non-empty, single-line description of at most 200 characters.
+    {% endif %}
 
 author_name:
   type: str
   help: "Author / maintainer name"
   default: "Your Name"
+  validator: >-
+    {% if not author_name.strip() or not (author_name | regex_search('^[^\r\n]{1,100}$')) %}
+    Use a non-empty, single-line author name of at most 100 characters.
+    {% endif %}
 
 author_email:
   type: str
   help: "Author / maintainer email"
   default: "you@example.com"
+  validator: >-
+    {% if author_email | length > 254 or not (author_email | regex_search('^[^@\s]+@[^@\s]+\.[^@\s]+$')) %}
+    Enter a single-line email address such as name@example.com.
+    {% endif %}
 
 github_username:
   type: str
   help: "GitHub username or org (used for URLs)"
   default: "your-username"
+  validator: >-
+    {% if '--' in github_username or not (github_username | regex_search('^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$')) %}
+    Use a GitHub user/org name of at most 39 letters, digits, or single dashes.
+    {% endif %}
 
 python_version:
   type: str
@@ -134,7 +168,8 @@ coding_agents:
   help: "Which AI coding agents should this project support? (AGENTS.md is always created)"
   choices:
     "Claude Code (.claude/, CLAUDE.md)": "claude_code"
-    "Codex CLI (AGENTS.md only)": "codex"
+    "Codex CLI (.codex/ + shared skills)": "codex"
+    "Pi Coding Agent (AGENTS.md + shared skills)": "pi"
     "OpenCode (.opencode/ + opencode.json)": "opencode"
     "Aider (.aider.conf.yml)": "aider"
   default:
@@ -161,6 +196,10 @@ codex_provider:
   default: "subscription"
   when: "{{ 'codex' in coding_agents }}"
 
+# --- Pi Coding Agent -------------------------------------------------------
+# Pi reads AGENTS.md and `.agents/skills` natively. Provider/model selection
+# stays user-scoped via `/login` and `/model`, so no project prompt is needed.
+
 # --- Aider -----------------------------------------------------------------
 aider_provider:
   type: str
@@ -175,6 +214,10 @@ aider_model:
   type: str
   help: "Aider default model (model alias on the chosen backend)"
   default: "{% if aider_provider == 'ollama' %}ollama/qwen3-coder:30b{% else %}claude-sonnet-5{% endif %}"
+  validator: >-
+    {% if not (aider_model | regex_search('^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$')) %}
+    Use a model identifier containing only letters, digits, dots, underscores, colons, slashes, or dashes.
+    {% endif %}
   when: "{{ 'aider' in coding_agents }}"
 
 # --- OpenCode --------------------------------------------------------------
@@ -203,9 +246,9 @@ ollama_tier:
 # Context7 fetches current library docs into the model context — solves the
 # stale-training-data problem for Python libs. Opt-in because it is an
 # external service (queries leave the sandbox) and a supply-chain factor
-# (OWASP ASI04): requires Node on PATH, pulls @upstash/context7-mcp@latest
-# on first use. Available for Claude Code, Codex CLI, and OpenCode; Aider
-# has no MCP support.
+# (OWASP ASI04): requires Node on PATH and executes a pinned npm package.
+# on first use. Available for Claude Code, Codex CLI, and OpenCode; Pi and
+# Aider have no built-in MCP support.
 include_context7:
   type: bool
   help: >-
@@ -213,7 +256,7 @@ include_context7:
     model context (solves stale-training-data for Python libs). Opt-in —
     requires Node on PATH; queries leave the sandbox (external service
     mcp.context7.com); adds a supply-chain factor (OWASP ASI04). Available
-    for Claude Code, Codex CLI, OpenCode; Aider has no MCP support.
+    for Claude Code, Codex CLI, OpenCode; Pi and Aider have no built-in MCP support.
   default: false
   when: "{{ 'claude_code' in coding_agents or 'codex' in coding_agents or 'opencode' in coding_agents }}"
 
@@ -222,6 +265,10 @@ litellm_base_url:
   type: str
   help: "LiteLLM gateway base URL (auth token lives in your shell, never committed)"
   default: "https://litellm.internal.example.com"
+  validator: >-
+    {% if litellm_base_url | length > 2048 or not (litellm_base_url | regex_search('^https?://[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+$')) %}
+    Enter a single-line http(s) URL without quotes, backslashes, or template characters.
+    {% endif %}
   when: >-
     {{
       ('claude_code' in coding_agents and claude_provider == 'litellm')
@@ -233,6 +280,10 @@ ollama_base_url:
   type: str
   help: "Ollama base URL (local daemon, default localhost:11434)"
   default: "http://localhost:11434"
+  validator: >-
+    {% if ollama_base_url | length > 2048 or not (ollama_base_url | regex_search('^https?://[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]+$')) %}
+    Enter a single-line http(s) URL without quotes, backslashes, or template characters.
+    {% endif %}
   when: >-
     {{
       'opencode' in coding_agents
@@ -283,11 +334,11 @@ sandbox_auto_init:
     SEARXNG_SECRET (plus CRAWL4AI_API_TOKEN / LANGFUSE_* where enabled) and
     write plaintext values into a local `.env`. `.env` is in `.gitignore` and
     never committed; `just sandbox-init` re-runs the same logic idempotently.
-    No → nothing is written; populate `.env` yourself (e.g. via a vault or
-    secret-injection pipeline) before `just sandbox-up` — otherwise the `:?`
-    guards in `docker-compose.yml` will fail loudly. Pick No if your security
-    policy forbids storing secrets in a plaintext `.env` on the host.
-  default: true
+    No → nothing is written; preferably keep only `op://...` 1Password secret
+    references in `.env` and launch with `op run --env-file=.env -- just
+    sandbox-up`. Otherwise populate `.env` through your vault or secret-injection
+    pipeline before startup; the `:?` guards fail loudly when values are absent.
+  default: false
   when: "{{ include_sandbox }}"
 
 # ---------------------------------------------------------------------------
@@ -297,12 +348,12 @@ cicd_provider:
   type: str
   help: >-
     Which CI/CD provider should this project use? GitHub Actions generates
-    `.github/workflows/ci.yml` (lint + test) and `docs.yml` (MkDocs → GitHub
-    Pages) plus Dependabot. GitLab CI generates `.gitlab-ci.yml` with lint,
-    test, build, push, and deploy stages. None skips all CI files.
+    `.github/workflows/ci.yml` (`just qa`) and `docs.yml` (MkDocs → GitHub
+    Pages) plus Dependabot. GitLab CI generates `.gitlab-ci.yml` with the
+    canonical quality gate and a strict docs build. None skips all CI files.
   choices:
     "GitHub Actions (ci.yml + docs.yml + Dependabot)": "github_actions"
-    "GitLab CI (.gitlab-ci.yml — lint / test / build / push / deploy)": "gitlab_ci"
+    "GitLab CI (.gitlab-ci.yml — quality gate + strict docs build)": "gitlab_ci"
     "None — no CI/CD files": "none"
   default: "github_actions"
 
@@ -316,25 +367,23 @@ sdd_framework:
     after generation for guidance.
   choices:
     "None — informal /spec via the workflow skill is enough": "none"
-    "OpenSpec — lightweight, brownfield-first, npm-based": "openspec"
-    "Spec-Kit — heavier, greenfield-first, uv-based": "spec-kit"
+    "Spec-Kit — structured, intent-driven, uv-based": "spec-kit"
   default: "none"
+  when: "{{ 'claude_code' in coding_agents or 'codex' in coding_agents or 'pi' in coding_agents or 'opencode' in coding_agents }}"
 
 sdd_install_agent:
   type: str
   help: >-
-    Which agent should the SDD framework install its slash-commands for?
-    Both frameworks generate markdown-only artefacts; you can hand-port the
-    command set to other agents later. Defaults to the first agent you
-    enabled above (claude > codex > opencode), or 'claude' as fallback.
+    Which selected agent should receive the Spec-Kit integration assets?
+    Spec-Kit generates agent-specific skills or command files. Defaults to the
+    first compatible agent enabled above (claude > codex > pi > opencode).
   choices:
     "Claude Code (.claude/commands/)": "claude"
     "Codex CLI": "codex"
+    "Pi Coding Agent": "pi"
     "OpenCode": "opencode"
-    "Cursor": "cursor"
-    "Copilot": "copilot"
   default: >-
-    {% if 'claude_code' in coding_agents %}claude{% elif 'codex' in coding_agents %}codex{% elif 'opencode' in coding_agents %}opencode{% else %}claude{% endif %}
+    {% if 'claude_code' in coding_agents %}claude{% elif 'codex' in coding_agents %}codex{% elif 'pi' in coding_agents %}pi{% elif 'opencode' in coding_agents %}opencode{% else %}claude{% endif %}
   when: "{{ sdd_framework != 'none' }}"
 
 # ---------------------------------------------------------------------------
@@ -349,6 +398,10 @@ sql_dialect:
   type: str
   help: "Default SQL dialect for sqlfluff"
   default: "ansi"
+  validator: >-
+    {% if not (sql_dialect | regex_search('^[a-z][a-z0-9_-]{0,31}$')) %}
+    Use a lowercase SQLFluff dialect identifier (letters, digits, underscore, dash).
+    {% endif %}
   when: "{{ include_sql }}"
 
 include_adrs:
@@ -370,13 +423,71 @@ license:
     - "Apache-2.0"
 
 # ---------------------------------------------------------------------------
+# Executable third-party tool pins (SPOT — single source of truth)
+# ---------------------------------------------------------------------------
+# These values are deliberately not prompted or written to the answers file.
+# Dependabot cannot update tools installed from generated shell commands, so
+# bump this map deliberately and verify all eight render scenarios.
+tool_versions:
+  type: yaml
+  when: false
+  default:
+    uv: "0.12.3"
+    just: "1.58.0"
+    claude_code: "2.1.228"
+    codex: "0.147.0"
+    pi: "0.84.1"
+    opencode: "1.18.16"
+    aider: "0.16.0"
+    context7: "4.0.2"
+    ccusage: "20.0.19"
+    spec_kit: "0.16.2"
+    spec_kit_ref: "4871b485f97c7fa452ec58eba325d87536c55c34"
+    pre_commit: "4.6.2"
+    pytest: "9.1.1"
+    pytest_cov: "7.1.0"
+    ruff: "0.16.2"
+    mypy: "2.3.0"
+
+# ---------------------------------------------------------------------------
 # Shared agent guardrails (SPOT — single source of truth)
 # ---------------------------------------------------------------------------
-# These three lists are the canonical inputs for tool-specific permission
+# These lists are the canonical inputs for tool-specific permission
 # files (`.claude/settings.json`, `opencode.json`). They are NOT prompted —
 # `when: false` keeps them out of the answers file but still injects them
 # into the Jinja render context. Edit them here; every tool config updates
 # in lockstep. Aider has no native permission system; see AGENTS.md.
+shared_allow_bash:
+  type: yaml
+  when: false
+  default:
+    - "pwd"
+    - "ls*"
+    - "rg *"
+    - "git status*"
+    - "git diff*"
+    - "git log*"
+    - "git show*"
+    - "just --list*"
+    - "just qa*"
+    - "just lint*"
+    - "just typecheck*"
+    - "just test*"
+    - "just cov*"
+    - "just docs-build*"
+    - "uv sync*"
+    - "uv tree*"
+    - "uv run pre-commit*"
+    - "uv run pytest*"
+    - "uv run mypy*"
+    - "uv run ruff*"
+    - "uv run pylint*"
+    - "uv run bandit*"
+    - "uv run interrogate*"
+    - "pytest*"
+    - "ruff *"
+    - "mypy *"
+
 shared_deny_bash:
   type: yaml
   when: false
@@ -404,6 +515,14 @@ shared_deny_read:
   default:
     - "**/.env"
     - "**/.env.*"
+    - "**/.envrc"
+    - "**/.netrc"
+    - "**/.npmrc"
+    - "**/.pypirc"
+    - "**/.docker/config.json"
+    - "**/.aws/**"
+    - "**/.ssh/**"
+    - "**/.config/gcloud/**"
     - "**/*secret*"
     - "**/*credentials*"
     - "**/id_rsa*"
@@ -417,9 +536,10 @@ shared_deny_read:
 # pipeline and persist the change across sessions. `**/.env*` is appended
 # in-jinja by `settings.json.jinja` (already covered by `shared_deny_read`).
 #
-# Granularity note: `.claude/**`, `.codex/**`, `.opencode/**` are NOT blanket-
-# denied because `/capture review` legitimately writes to `.claude/LEARNINGS.md`
-# and the inbox. Only the structural/trust-sensitive subpaths are protected.
+# Claude's trust-sensitive subpaths are granular so runtime memory can remain
+# writable. Other agent config trees contain only runtime glue and are denied
+# wholesale. Team guidance and skills are protected because they enter future
+# model context and are therefore persistence surfaces.
 shared_deny_write:
   type: yaml
   when: false
@@ -432,16 +552,22 @@ shared_deny_write:
     - ".claude/commands/**"
     - ".claude/scripts/**"
     - ".claude/plugins/**"
-    # Codex / OpenCode / Aider config.
+    # Codex / Pi / OpenCode / Aider config.
     - ".codex/**"
+    - ".pi/**"
+    - ".agents/**"
     - ".opencode/**"
     - ".aider.conf.yml"
     # Top-level agent guidance and project-wide rules.
     - "AGENTS.md"
     - "CLAUDE.md"
+    - "agent-guidelines/**"
+    - "skills/**"
+    - ".specify/memory/constitution.md"
     # Sandbox + pre-commit definitions.
     - "docker/**"
     - "docker-compose.yml"
+    - "docker-compose.override.yml"
     - ".pre-commit-config.yaml"
     - ".gitleaks.toml"
     # CI/CD definitions — protect whichever provider was chosen.
@@ -452,6 +578,7 @@ shared_deny_write:
     {% endif -%}
     # Build/task config — editing these is a human review decision.
     - "pyproject.toml"
+    - "uv.lock"
     - "justfile"
 
 shared_ask_bash:
@@ -467,7 +594,13 @@ shared_ask_bash:
     - "git stash*"
     - "git push*"
     - "git reset*"
+    - "git restore*"
+    - "git clean*"
     - "git rebase*"
     - "git merge*"
     - "uv add*"
     - "uv remove*"
+    - "uv tool*"
+    - "uvx *"
+    - "just sandbox-*"
+    - "docker *"

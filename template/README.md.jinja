@@ -23,15 +23,19 @@ Run `just` (or `just --list`) to see every available recipe.
 src/{{ package_name }}/   # the package
 tests/                    # pytest tests
 docs/                     # MkDocs documentation
-agent-guidelines/               # team coding standards
+agent-guidelines/         # team coding standards
 skills/                   # reusable agent skills (SKILL.md)
+.agents/skills -> ../skills  # native Codex/Pi discovery when selected
 AGENTS.md                 # instructions for AI coding agents
 ```
 
 ## Documentation
 
-Built with MkDocs (Material). Preview locally with `just docs`; it is deployed to
-GitHub Pages automatically on push to `main`.
+Built with MkDocs (Material). Preview locally with `just docs`.{% if cicd_provider == 'github_actions' %}
+It is deployed to GitHub Pages automatically on push to `main`.{% elif cicd_provider == 'gitlab_ci' %}
+GitLab CI verifies the strict docs build but does not assume a publishing target;
+add publishing or deployment jobs when the target environment is known.{% else %}
+No documentation deployment workflow was generated.{% endif %}
 
 ## Updating from the template
 

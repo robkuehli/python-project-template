@@ -7,56 +7,34 @@
 #
 # Schema: https://developers.openai.com/codex/config-reference
 
-# gpt-5.5 is the current Codex-CLI default model. Override per-session with
+# GPT-5.6 is the current recommended Codex model. Override per-session with
 # `/model` or `--model`.
-model = "gpt-5.5"
+model = "gpt-5.6"
 
 # "medium" is the documented all-day driver; "xhigh" can cost 3–5× tokens.
 # Override per-session with `/effort` or `--reasoning-effort`.
 model_reasoning_effort = "medium"
 
-# workspace-write + on-request is the maintainer default for interactive use.
+# The :workspace permission profile supplies the workspace-write sandbox;
+# current Codex forbids combining `default_permissions` with `sandbox_mode`.
+# `on-request` keeps escalation available for commands outside that profile.
 # https://developers.openai.com/codex/agent-approvals-security
 #
-# Note: Codex's execpolicy deny-rule syntax is not yet TOML-stable, so the
-# shared_deny_bash patterns (rm -rf, sudo, curl|bash, DROP TABLE) are
-# documented in AGENTS.md as verbal guardrails rather than rendered here.
-# pre-commit (gitleaks, detect-private-key) is the hard backstop layer.
-# If Codex ships a stable deny syntax, render shared_deny_bash here.
-sandbox_mode = "workspace-write"
+# This template does not install a separate execpolicy ruleset. The shared
+# destructive-command patterns remain in AGENTS.md, while pre-commit
+# (gitleaks, detect-private-key) provides the hard secret-scanning backstop.
 approval_policy = "on-request"
 default_permissions = ":workspace"
 
-# --- Feature flags (all stable) ---------------------------------------------
-# memories  : native Memory/Chronicle — private per-machine learnings.
-# multi_agent: spawn_agent / send_input / resume_agent / wait_agent tools.
-# hooks     : lifecycle hooks loaded from [hooks] below or hooks.json.
-# unified_exec: PTY-backed exec tool (stable everywhere except Windows).
-# shell_snapshot: snapshot shell env to speed up repeated commands.
+# --- Feature flags ----------------------------------------------------------
+# Multi-agent tools, hooks, unified exec, and shell snapshots are already on
+# by default. Memories are opt-in, so enable only that non-default feature.
 [features]
 memories = true
-multi_agent = true
-hooks = true
-unified_exec = true
-shell_snapshot = true
 
-# --- Subagents (SPOT: separate files under .codex/agents/) ------------------
-# Each agent has its own TOML layer; referenced by config_file. Analogous to
-# .claude/agents/*.md and .opencode/agents/*.md — three subagents cover the
-# bulk: researcher (recon), reviewer (independent diff review), security-auditor.
-[agents.researcher]
-description = "Read-only codebase analyst. Maps affected files, patterns, and dependencies for a task. Use proactively for wide reconnaissance so the main conversation stays clean. Never writes or modifies files."
-config_file = ".codex/agents/researcher.toml"
+# Custom subagents are auto-discovered from `.codex/agents/*.toml`.
 
-[agents.reviewer]
-description = "Independent diff reviewer. Fresh context, no prior assumptions. Reviews against the spec, not against what the author intended."
-config_file = ".codex/agents/reviewer.toml"
-
-[agents.security-auditor]
-description = "Security-focused reviewer. Checks for secrets, injection, authz, dependency risk, and MCP/permission drift. Runs before merging auth/input/config changes."
-config_file = ".codex/agents/security-auditor.toml"
-
-# --- Hooks (Parity with Claude Code / OpenCode) -----------------------------
+# --- Hooks ------------------------------------------------------------------
 # Stop hook: reminds about the "Verify" stage of Plan-Execute-Verify when a
 # session ends with uncommitted diff. SOFT-WARN by default; opt-in HARD-BLOCK
 # via `export CODEX_VERIFY_HARD_BLOCK=1` — then the turn is blocked until
@@ -66,7 +44,7 @@ config_file = ".codex/agents/security-auditor.toml"
 [[hooks.Stop]]
 [[hooks.Stop.hooks]]
 type = "command"
-command = "\"$CODEX_PROJECT_DIR\"/.codex/hooks/verify-on-stop.sh"
+command = '"$(git rev-parse --show-toplevel)/.codex/hooks/verify-on-stop.sh"'
 {%- if include_context7 %}
 
 # --- MCP servers ------------------------------------------------------------
@@ -75,5 +53,5 @@ command = "\"$CODEX_PROJECT_DIR\"/.codex/hooks/verify-on-stop.sh"
 # Requires Node on PATH; queries leave the sandbox (external service).
 [mcp_servers.context7]
 command = "npx"
-args = ["-y", "@upstash/context7-mcp@latest"]
+args = ["-y", "@upstash/context7-mcp@{{ tool_versions.context7 }}"]
 {%- endif %}

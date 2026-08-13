@@ -10,7 +10,7 @@
 # with a custom status line."
 #
 # ccusage installieren (einmalig, optional):
-#   npm i -g ccusage           # oder: bun add -g ccusage / pnpm add -g ccusage
+#   npm i -g ccusage@{{ tool_versions.ccusage }}
 # Doku: https://github.com/ryoppippi/ccusage
 set -euo pipefail
 
@@ -23,7 +23,7 @@ if command -v ccusage >/dev/null 2>&1; then
 fi
 # Fallback: ccusage via npx/bunx (network-Hop in Kauf nehmen, gecached schnell)
 if command -v bunx >/dev/null 2>&1; then
-  printf '%s' "$PAYLOAD" | bunx -y ccusage@latest statusline 2>/dev/null && exit 0
+  printf '%s' "$PAYLOAD" | bunx -y ccusage@{{ tool_versions.ccusage }} statusline 2>/dev/null && exit 0
 fi
 
 # --- 2) Schlanker Fallback ohne Node-Toolchain -------------------------------

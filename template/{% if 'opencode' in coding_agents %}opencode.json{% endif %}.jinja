@@ -17,7 +17,7 @@
       "npm": "@ai-sdk/openai-compatible",
       "name": "Ollama ({{ tier }})",
       "options": {
-        "baseURL": "{{ ollama_base_url }}/v1"
+        "baseURL": {{ (ollama_base_url ~ '/v1') | tojson }}
       },
 {%- if tier == 'local' %}
       "small_model": "qwen3:4b",
@@ -61,7 +61,10 @@
   },
   "permission": {
     "bash": {
-      "*": "allow"
+      "*": "ask"
+{%- for pattern in shared_allow_bash %},
+      {{ pattern | tojson }}: "allow"
+{%- endfor %}
 {%- for pattern in shared_deny_bash %},
       {{ pattern | tojson }}: "deny"
 {%- endfor %}
@@ -81,6 +84,7 @@
       {{ pattern | tojson }}: "deny"
 {%- endfor %}
     },
+    "external_directory": "ask",
     "doom_loop": "ask"
   }
 }

@@ -42,7 +42,7 @@ So: opt-in for the developer who wants it, never the default.
 ## When it is worth adding
 
 - You run AI coding agents daily and your token bill is the limiting factor.
-- You work across multiple agents (Claude Code, Codex, OpenCode, Aider) and
+- You work across multiple agents (Claude Code, Codex, Pi, OpenCode, Aider) and
   would benefit from a shared cross-agent memory store.
 - You need *reversible* compression — originals retrievable on demand — rather
   than lossy summary.
@@ -106,7 +106,7 @@ the compression surface.
 
 ## Alternatives
 
-- **Native compaction** — Claude Code `/compact`, Codex `/summarise`. Free,
+- **Native compaction** — Claude Code and Codex `/compact`. Free,
   built in, lossy. Good enough for many sessions; no extra install.
 - **RTK** / **lean-ctx** — CLI wrappers that rewrite shell-output specifically
   (`git show --short`, scoped `ls`, summarised installers). Narrower scope than

@@ -1,0 +1,36 @@
+name: Template CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: template-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          python-version: "3.13"
+
+      - name: Install template test tools
+        run: |
+          uv tool install rust-just==1.58.0
+          uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@4871b485f97c7fa452ec58eba325d87536c55c34
+
+      - name: Render and verify generated projects
+        run: just --justfile _dev/justfile render-test
+
+      - name: Build template documentation strictly
+        run: just --justfile _dev/justfile docs-build

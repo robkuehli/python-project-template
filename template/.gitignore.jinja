@@ -29,6 +29,11 @@ site/
 # Secrets / local env (keep .env.template tracked)
 .env
 .env.local
+{% if include_sandbox %}
+
+# Local sandbox customization (may expose host instruction paths)
+docker-compose.override.yml
+{% endif %}
 
 # Claude Code — personal, per-developer overrides (keep settings.json tracked)
 .claude/settings.local.json

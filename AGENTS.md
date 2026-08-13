@@ -64,8 +64,9 @@ template, or the product built from it?* Template → `_dev/docs/`, product →
   `template/opencode.json.jinja`, `template/.aider.conf.yml.jinja`,
   `template/.codex/config.toml.jinja`) carry only runtime glue. No rule in two
   places. A rule change is a one-file change.
-- **Shared permission lists** (`shared_deny_bash`, `shared_deny_read`,
-  `shared_deny_write`, `shared_ask_bash`) live once in `copier.yml` with
+- **Shared permission lists** (`shared_allow_bash`, `shared_deny_bash`,
+  `shared_deny_read`, `shared_deny_write`, `shared_ask_bash`) live once in
+  `copier.yml` with
   `when: false` and are injected into the render context so every tool config
   stays in lockstep. Edit them in `copier.yml`; do not duplicate per tool.
 - **Docs follow Diátaxis** — see `template/agent-guidelines/documentation.md` for the
@@ -95,7 +96,7 @@ template, or the product built from it?* Template → `_dev/docs/`, product →
 
 A change is only done when:
 
-1. `just -f _dev/justfile render-test` passes (five scenarios render clean,
+1. `just -f _dev/justfile render-test` passes (eight scenarios render clean,
    JSON/TOML/YAML validate, Compose profiles resolve).
 2. `just -f _dev/justfile docs-build` passes (strict MkDocs build of
    `_dev/`).

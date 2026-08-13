@@ -60,25 +60,27 @@ claude_provider        → LiteLLM gateway (company / Bedrock / mixed)
 codex_provider         → LiteLLM gateway (OpenAI-compatible)
 litellm_base_url       → https://litellm.your-company.internal
 include_sandbox        → no
-sdd_framework          → OpenSpec — lightweight, brownfield-first, npm-based
+sdd_framework          → Spec-Kit — structured, intent-driven, uv-based
 include_sql            → yes
 sql_dialect            → snowflake                      # or postgres, bigquery, ansi, …
 license                → Proprietary
 ```
 
 After generation, the gateway token lives in your shell, never in the repo.
-Claude Code's base URL is already pinned in `.claude/settings.json`; only the
-token is needed in the shell. Codex needs both:
+Claude Code's base URL is pinned in `.claude/settings.json`. Codex deliberately
+keeps provider routing user-scoped, so install the generated profile once per
+machine:
 
 ```bash
 # in your ~/.zshrc or a sourced env file (NOT committed):
 export ANTHROPIC_AUTH_TOKEN="$LITELLM_TOKEN"
-export OPENAI_BASE_URL="$LITELLM_BASE_URL"
 export OPENAI_API_KEY="$LITELLM_TOKEN"
 
 cd my-project
+mkdir -p ~/.codex
+cp .codex/litellm.config.toml.example ~/.codex/litellm.config.toml
 claude            # picks up the token; base URL comes from .claude/settings.json
-codex             # picks up OPENAI_BASE_URL/API_KEY
+codex --profile litellm
 ```
 
 Both tools read the same `AGENTS.md` + `agent-guidelines/` + `skills/`. Use Claude

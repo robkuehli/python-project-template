@@ -19,12 +19,16 @@ and how it runs. For the reasoning behind the stack, see
 | `Gitleaks` | Secret scanning | `.gitleaks.toml` (optional) | pre-commit (`gitleaks`) |
 | `pre-commit-hooks` | Whitespace, EOL, YAML/TOML, keys, conflicts | built-in | pre-commit |
 | `interrogate` | Docstring coverage (fail-under 80 %) | `[tool.interrogate]` | pre-commit (local) |
-| `pytest` | Test runner (+ `pytest-sugar`) | `[tool.pytest.ini_options]` | `just test`, CI only (not pre-commit) |
+| `pytest` | Test runner (+ `pytest-sugar`) | `[tool.pytest.ini_options]` | `just test`, final `just qa` step (not pre-commit) |
 | `coverage` | Test coverage (`pytest-cov`) | `[tool.coverage]` | `just cov` |
 {% if include_sql %}| `sqlfluff` | SQL linter/formatter (dialect `{{ sql_dialect }}`) | `[tool.sqlfluff]` | pre-commit (`sqlfluff-lint`) |
-{% endif %}| `MkDocs` | Documentation site (Material + mkdocstrings) | `mkdocs.yml` | `just docs`, Docs workflow |
+{% endif %}| `MkDocs` | Documentation site (Material + mkdocstrings) | `mkdocs.yml` | `just docs`{% if cicd_provider == 'github_actions' %}, Docs workflow{% endif %} |
+{%- if cicd_provider == 'github_actions' %}
 | `GitHub Actions` | CI + docs deploy | `.github/workflows/` | push / pull request |
 | `Dependabot` | Weekly dependency &amp; Action updates | `.github/dependabot.yml` | scheduled |
+{%- elif cicd_provider == 'gitlab_ci' %}
+| `GitLab CI` | Quality gate + strict docs build | `.gitlab-ci.yml` | push / merge request |
+{%- endif %}
 
 ## AI coding agents
 
@@ -38,7 +42,10 @@ single source of truth. The files below only carry tool-specific wiring
 | `Claude Code` | `.claude/settings.json`, `CLAUDE.md`, `AGENTS.md` | {% if claude_provider == 'litellm' %}LiteLLM gateway (`{{ litellm_base_url }}`){% else %}Claude subscription{% endif %} | {% if claude_provider == 'litellm' %}`ANTHROPIC_AUTH_TOKEN` in shell{% else %}`/login`{% endif %} |
 {%- endif %}
 {%- if 'codex' in coding_agents %}
-| `Codex CLI` | `.codex/config.toml`, `AGENTS.md` | {% if codex_provider == 'litellm' %}LiteLLM gateway (`{{ litellm_base_url }}`){% else %}ChatGPT subscription{% endif %} | {% if codex_provider == 'litellm' %}`OPENAI_API_KEY` + `OPENAI_BASE_URL` in shell{% else %}`codex login`{% endif %} |
+| `Codex CLI` | `.codex/`, `.agents/skills`, `AGENTS.md` | {% if codex_provider == 'litellm' %}LiteLLM gateway (`{{ litellm_base_url }}`){% else %}ChatGPT subscription{% endif %} | {% if codex_provider == 'litellm' %}`OPENAI_API_KEY` + user profile{% else %}`codex login`{% endif %} |
+{%- endif %}
+{%- if 'pi' in coding_agents %}
+| `Pi Coding Agent` | `.agents/skills`, `AGENTS.md` | User-selected via `/login` + `/model` | Subscription or provider API key |
 {%- endif %}
 {%- if 'aider' in coding_agents %}
 | `Aider` | `.aider.conf.yml`, `AGENTS.md` | {% if aider_provider == 'litellm' %}LiteLLM gateway (`{{ litellm_base_url }}`){% else %}Ollama (`{{ ollama_base_url }}`){% endif %} | {% if aider_provider == 'litellm' %}`OPENAI_API_KEY` in shell{% else %}none (local){% endif %} |

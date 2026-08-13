@@ -19,18 +19,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
       - name: Set up uv + Python
         # setup-uv stopped publishing moving major/minor tags as a supply-chain
         # hardening measure — pin to a full version and bump deliberately.
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           python-version: "3.13"
 
       - name: Build & deploy to GitHub Pages
         run: |
-          uv run --with 'mkdocs-material>=9.5' \
+          uv run --with 'mkdocs-material==9.7.7' \
             mkdocs gh-deploy --force --strict -f _dev/mkdocs.yml

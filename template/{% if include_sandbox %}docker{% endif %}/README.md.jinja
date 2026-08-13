@@ -9,10 +9,18 @@ ephemeral.
 ```bash
 just sandbox-build      # build the image (once)
 just sandbox-init       # generate missing secrets into .env (idempotent)
+just sandbox-enable-user-instructions  # optional: selected global rules, read-only
 just sandbox-up         # start supporting services
 just sandbox-shell      # drop into the sandbox shell
 just sandbox-down       # tear down
 ```
+
+Prefer `op://…` 1Password references in `.env` and start with
+`op run --env-file=.env -- just sandbox-up`. The `agent-home` Docker volume
+persists CLI logins; `just sandbox-nuke` deletes that credential-bearing volume.
+Global Claude/Codex instructions remain isolated unless you explicitly run
+`just sandbox-enable-user-instructions`; the generated local override is
+git-ignored and never mounts complete agent config directories.
 
 ## Full docs
 

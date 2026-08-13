@@ -1,10 +1,10 @@
 [project]
-name = "{{ project_slug }}"
+name = {{ project_slug | tojson }}
 version = "0.1.0"
-description = "{{ project_description }}"
+description = {{ project_description | tojson }}
 readme = "README.md"
 requires-python = ">={{ python_version }}"
-authors = [{ name = "{{ author_name }}", email = "{{ author_email }}" }]
+authors = [{ name = {{ author_name | tojson }}, email = {{ author_email | tojson }} }]
 {%- if license == "Proprietary" %}
 license = { text = "Proprietary" }
 classifiers = [
@@ -20,9 +20,9 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/{{ github_username }}/{{ project_slug }}"
-Documentation = "https://{{ github_username }}.github.io/{{ project_slug }}/"
-Repository = "https://github.com/{{ github_username }}/{{ project_slug }}"
+Homepage = {{ ('https://github.com/' ~ github_username ~ '/' ~ project_slug) | tojson }}
+Documentation = {{ ('https://' ~ github_username ~ '.github.io/' ~ project_slug ~ '/') | tojson }}
+Repository = {{ ('https://github.com/' ~ github_username ~ '/' ~ project_slug) | tojson }}
 
 [build-system]
 requires = ["hatchling"]

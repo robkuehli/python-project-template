@@ -8,10 +8,11 @@ in the repo root.
   lockstep across pre-commit `default_language_version`, `.python-version`,
   mypy/ruff/pylint targets, and CI. The choice list is deliberately limited to
   releases the linter stack fully supports.
-- **Agent permission lists are a single source of truth.** `shared_deny_bash`,
-  `shared_deny_read`, `shared_deny_write`, and `shared_ask_bash` live once in
-  `copier.yml` and are injected into every tool config, so `.claude/settings.json`
-  and `opencode.json` can never drift apart.
+- **Agent permission lists are a single source of truth.** `shared_allow_bash`,
+  `shared_deny_bash`, `shared_deny_read`, `shared_deny_write`, and
+  `shared_ask_bash` live once in `copier.yml` and are injected into every
+  permission-capable tool config, so `.claude/settings.json` and
+  `opencode.json` cannot drift apart.
 - **License defaults to Proprietary.** No `LICENSE` file is written and a
   `Private :: Do Not Upload` classifier blocks an accidental PyPI upload. Opt
   into MIT/Apache-2.0 explicitly.
@@ -37,3 +38,14 @@ in the repo root.
   only). If OpenCode later ships an Auto-Memory feature, the template should
   follow suit (analogous to Claude Auto-Memory / Codex Memories) — track this
   and migrate if it lands.
+- **Pi stays minimal and native.** Pi reads the shared `AGENTS.md` directly and
+  discovers the canonical skills through `.agents/skills`. The template does
+  not ship extensions to emulate permission prompts, subagents, plan mode, MCP,
+  or hooks: each extension is executable supply-chain surface and must justify
+  itself against a concrete project need.
+- **Executable dependencies are immutable at generation time.** GitHub Actions
+  and Pre-Commit repositories use commit SHAs with readable release comments;
+  sandbox base/service images use manifest digests; npm/PyPI CLIs use exact
+  versions; and Spec-Kit uses a reviewed commit. Human-readable pins live in the
+  non-prompted `tool_versions` map in `copier.yml` and are bumped deliberately
+  together with the render gate.

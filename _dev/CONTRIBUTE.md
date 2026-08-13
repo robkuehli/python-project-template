@@ -20,8 +20,9 @@ not on a project generated from it. Generated projects have their own
    change, the files touched, and the risk. Get approval before editing.
 2. **Execute** with small, atomic diffs. One logical change per commit.
 3. **Verify** before committing:
-   - `just -f _dev/justfile render-test` — five Copier scenarios render clean,
-     JSON/TOML/YAML validate, Compose profiles resolve. This is the
+   - `just -f _dev/justfile render-test` — eight Copier scenarios render clean,
+     JSON/TOML/YAML validate, Compose profiles resolve, and a staged generated
+     project passes its real `just qa` plus strict docs build. This is the
      template's `just qa` equivalent.
    - `just -f _dev/justfile docs-build` — strict MkDocs build of the template
      docs site (`_dev/`).
@@ -61,17 +62,22 @@ commit that touches `copier.yml`, any `*.jinja` file, or `_dev/justfile`:
 just -f _dev/justfile render-test
 ```
 
-Five scenarios (see `_dev/justfile` comments for details):
+Eight scenarios (see `_dev/justfile` comments for details):
 
 1. Claude-Code-only, no sandbox (minimal path).
 2. Full stack with Langfuse v3 + Crawl4AI (exercises every profile-gated `:?`
    guard).
 3. Full stack with MLflow (the other Compose Jinja branch).
-4. All four agents + Context7 + Python 3.14 (Codex config, granular OpenCode
+4. All five agents + Context7 + Python 3.14 (Codex config, native Pi skills,
+   granular OpenCode
    permissions, Context7-conditional, 3.14 tooling pins).
 5. Codex (LiteLLM) + OpenCode (hybrid) + Context7=false + Python 3.12
    (Codex-LiteLLM AGENTS.md text, OpenCode hybrid model block, Context7
    else-branch, 3.12 tooling pins).
+6. GitLab CI, with GitHub-only files absent.
+7. No CI/CD, with both provider surfaces absent.
+8. Pi-only + Spec-Kit, covering native shared-skill discovery and the remaining
+   SDD branch.
 
 The test runs with `--defaults`, so a shift in `copier.yml` defaults moves the
 covered scope with it instead of silently going stale.

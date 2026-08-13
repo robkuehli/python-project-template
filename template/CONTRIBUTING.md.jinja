@@ -24,8 +24,13 @@ Pre-commit runs automatically on every commit. Run all hooks manually with
   during `copier copy`). Don't delete or commit the resolved files — edit the
   originals under `skills/` and let MkDocs follow the link. If the symlink is
   ever lost, re-create it with `ln -s ../skills docs/skills` (Unix/WSL2 only).
-- **Bumping ruff (or any tool with both a `pyproject.toml` pin and a
-  `.pre-commit-config.yaml` `rev:`)** — touch both in the same commit so
-  `just qa` and `pre-commit run --all-files` stay in lockstep (the quality
-  gate must stay green). The fastest path is `uv lock --upgrade-package ruff`
-  followed by `uv run pre-commit autoupdate --repo https://github.com/astral-sh/ruff-pre-commit`.
+{%- if 'codex' in coding_agents or 'pi' in coding_agents %}
+- `.agents/skills/` is the native Codex/Pi discovery symlink to the same
+  top-level `skills/` directory. Re-create it with
+  `mkdir -p .agents && ln -s ../skills .agents/skills` if it is lost.
+{%- endif %}
+- **Bumping Ruff (or another tool used both from `uv.lock` and Pre-Commit)** —
+  update the lockfile and the hook's immutable commit SHA plus readable release
+  comment in the same commit. `pre-commit autoupdate` may restore a mutable tag;
+  resolve that release tag to its reviewed commit before merging. Run `just qa`
+  after both sides are synchronized.

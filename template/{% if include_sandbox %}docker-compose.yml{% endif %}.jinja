@@ -10,11 +10,13 @@ services:
   agent:
     build:
       context: ./docker/agent
-      args:
-        PYTHON_VERSION: "{{ python_version }}"
     image: {{ project_slug }}-agent:latest
     volumes:
       - .:/workspace:rw
+      # Compose reads the host .env before container creation. Mask the file
+      # inside the container so shell commands cannot bypass tool-level read
+      # denies and recover plaintext secrets from the repository bind mount.
+      - /dev/null:/workspace/.env:ro
       # --- OWASP ASI06 hardening: read-only overlays on trust-sensitive paths.
       # The agent's permission system (`shared_deny_write` in copier.yml →
       # `.claude/settings.json`) blocks Tool-level Write/Edit, but does NOT
@@ -46,6 +48,9 @@ services:
 {%- if 'codex' in coding_agents %}
       - ./.codex:/workspace/.codex:ro
 {%- endif %}
+{%- if 'codex' in coding_agents or 'pi' in coding_agents %}
+      - ./.agents:/workspace/.agents:ro
+{%- endif %}
 {%- if 'opencode' in coding_agents %}
       - ./opencode.json:/workspace/opencode.json:ro
       - ./.opencode:/workspace/.opencode:ro
@@ -54,19 +59,22 @@ services:
       - ./.aider.conf.yml:/workspace/.aider.conf.yml:ro
 {%- endif %}
       # ---
-      - agent-cache:/home/agent/.cache
-      - agent-uv:/home/agent/.local/share/uv
+      # Persist logins and user-scoped agent state across `run --rm` sessions.
+      # This volume is secret-bearing; `just sandbox-nuke` removes it.
+      - agent-home:/home/agent
     working_dir: /workspace
     environment:
       # Auth tokens are read from the *shell* and forwarded — never baked into the image.
 {%- if 'claude_code' in coding_agents and claude_provider == 'litellm' %}
       - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
-      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-{{ litellm_base_url }}}
+      - {{ ('ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-' ~ litellm_base_url ~ '}') | tojson }}
 {%- endif %}
 {%- if ('codex' in coding_agents and codex_provider == 'litellm')
     or ('aider' in coding_agents and aider_provider == 'litellm') %}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-{{ litellm_base_url }}}
+{%- endif %}
+{%- if 'aider' in coding_agents and aider_provider == 'litellm' %}
+      - {{ ('OPENAI_BASE_URL=${OPENAI_BASE_URL:-' ~ litellm_base_url ~ '}') | tojson }}
 {%- endif %}
 {%- if 'opencode' in coding_agents
     or ('aider' in coding_agents and aider_provider == 'ollama') %}
@@ -119,7 +127,7 @@ services:
     # SearXNG uses date-tagged releases (YYYY.M.D-<short-sha>). Pin deliberately;
     # `latest` floats and breaks reproducibility. Bump by checking
     # https://hub.docker.com/r/searxng/searxng/tags.
-    image: searxng/searxng:2026.6.11-a1490676e
+    image: searxng/searxng:2026.6.11-a1490676e@sha256:14d3168c67eb694a1d1b6f408c47b16ce24666882b5eae516451ae62f5f7fa86
     volumes:
       - ./docker/searxng:/etc/searxng:ro
     environment:
@@ -140,7 +148,7 @@ services:
     # Playwright + Chromium under the hood — first pull is ~1.4 GB on v0.8.
     # Pinned: the REST schema changed between 0.5 → 0.7; bump deliberately.
     # v0.8.x line is stable for headless markdown fetches; v0.9 is unreleased.
-    image: unclecode/crawl4ai:0.8.9
+    image: unclecode/crawl4ai:0.8.9@sha256:b243f684ad20f71ee108ab3fc3f31f3349eb5b31a9947b9e563d868417141aad
     environment:
       # `:?` fails fast if the token is unset. Generate once: `openssl rand -hex 32`.
       - CRAWL4AI_API_TOKEN=${CRAWL4AI_API_TOKEN:?Set CRAWL4AI_API_TOKEN in your shell or .env (openssl rand -hex 32)}
@@ -172,7 +180,7 @@ services:
   # backing services. Sandbox-only — for production, follow
   # https://langfuse.com/self-hosting.
   langfuse-db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
     environment:
       POSTGRES_DB: langfuse
       POSTGRES_USER: langfuse
@@ -189,7 +197,7 @@ services:
       retries: 5
 
   langfuse-clickhouse:
-    image: clickhouse/clickhouse-server:24.8-alpine
+    image: clickhouse/clickhouse-server:24.8-alpine@sha256:b002e56ed5c16e224c312527f6fcba7e77216fec5d7a88a7828f59efc614feb5
     environment:
       CLICKHOUSE_DB: default
       CLICKHOUSE_USER: clickhouse
@@ -209,7 +217,7 @@ services:
       retries: 10
 
   langfuse-redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     command: ["redis-server", "--requirepass", "${LANGFUSE_REDIS_AUTH:-redis}"]
     networks: [sandbox]
     profiles: [trace]
@@ -223,7 +231,7 @@ services:
   langfuse-minio:
     # MinIO uses RELEASE.YYYY-MM-DDTHH-MM-SSZ tags. Bump by checking
     # https://hub.docker.com/r/minio/minio/tags.
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     command: ["server", "--address", ":9000", "--console-address", ":9001", "/data"]
     environment:
       MINIO_ROOT_USER: ${LANGFUSE_MINIO_ROOT_USER:-minio}
@@ -240,7 +248,7 @@ services:
       retries: 5
 
   langfuse-worker:
-    image: langfuse/langfuse-worker:3
+    image: langfuse/langfuse-worker:3@sha256:138a5b510cd76262a2abb02af1ddc563105013fdc9a62e63ccce526140ad05ba
     depends_on:
       langfuse-db: { condition: service_healthy }
       langfuse-clickhouse: { condition: service_healthy }
@@ -267,7 +275,7 @@ services:
     restart: unless-stopped
 
   langfuse:
-    image: langfuse/langfuse:3
+    image: langfuse/langfuse:3@sha256:60a668b1dd06e2d9a034ba8b2ed5e84303e66c6202d76b288020059a755fd037
     depends_on:
       langfuse-db: { condition: service_healthy }
       langfuse-clickhouse: { condition: service_healthy }
@@ -285,7 +293,7 @@ services:
 {%- elif sandbox_observability == 'mlflow' %}
 
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v3.10.0
+    image: ghcr.io/mlflow/mlflow:v3.10.0@sha256:f1e711271dd0c1efec7e896cb50d098acd4ba53781a5ab2a3a95167738a01e14
     command: >-
       mlflow server
       --host 0.0.0.0
@@ -302,8 +310,7 @@ services:
 {%- endif %}
 
 volumes:
-  agent-cache:
-  agent-uv:
+  agent-home:
 {%- if sandbox_observability == 'langfuse' %}
   langfuse-db:
   langfuse-clickhouse-data:

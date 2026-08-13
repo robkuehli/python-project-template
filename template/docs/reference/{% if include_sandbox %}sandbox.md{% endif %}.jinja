@@ -19,10 +19,11 @@ docker/
 | --- | --- |
 | `just sandbox-build` | Build (or rebuild) the agent image |
 | `just sandbox-init` | Generate missing secrets into `.env` (idempotent) |
+| `just sandbox-enable-user-instructions` | Create a local, read-only override for selected global agent instructions |
 | `just sandbox-up` | Start supporting services in the background |
 | `just sandbox-shell` | Open an interactive shell in the agent container |
 | `just sandbox-down` | Stop containers + networks (volumes stay) |
-| `just sandbox-nuke` | Stop and remove volumes too (destructive) |
+| `just sandbox-nuke` | Stop and remove volumes, including persisted agent logins (destructive) |
 
 ## Services
 
@@ -64,6 +65,30 @@ created in the Langfuse UI after first login and copied into `.env` manually.
 
 Missing required secrets make `docker compose up` fail loudly on the `:?` guards
 in `docker-compose.yml`.
+
+Prefer storing only 1Password reference URIs in `.env`, for example
+`OPENAI_API_KEY=op://<vault>/<item>/OPENAI_API_KEY`, and resolve them with
+`op run --env-file=.env -- just sandbox-up`. Plain Docker Compose treats an
+`op://…` URI as an ordinary string and cannot resolve it.
+
+## Persistent volumes
+
+| Volume | Contents | Security note |
+| --- | --- | --- |
+| `agent-home` | Agent login caches and user-scoped state | Secret-bearing; removed by `sandbox-nuke` |
+{%- if sandbox_observability == 'langfuse' %}
+| Langfuse service volumes | Database, ClickHouse, Redis/MinIO data | May contain prompts, traces, and credentials |
+{%- elif sandbox_observability == 'mlflow' %}
+| `mlflow-data` | Experiments and artifacts | May contain sensitive model inputs/outputs |
+{%- endif %}
+
+## Optional host instruction mounts
+
+`docker-compose.override.yml` is absent by default and git-ignored. The
+`sandbox-enable-user-instructions` recipe creates it only after displaying the
+detected standard Claude/Codex user-instruction paths and receiving confirmation.
+All generated mounts are read-only. Existing override files are never
+overwritten, and complete agent configuration directories are never mounted.
 {%- if include_crawl4ai %}
 
 ## Crawl4AI

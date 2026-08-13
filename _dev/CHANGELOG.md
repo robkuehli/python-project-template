@@ -13,15 +13,31 @@ their own `CHANGELOG.md` (see `template/CHANGELOG.md.jinja`).
 
 ### Added
 
+- **Opt-in global sandbox instructions** via
+  `just sandbox-enable-user-instructions`. The helper displays detected
+  standard Claude/Codex user instruction sources, asks for confirmation, and
+  creates a git-ignored Compose override with only those sources mounted
+  read-only. It prefers Codex `AGENTS.override.md`, never merges into repository
+  guidance, never mounts complete agent configuration directories, and refuses
+  to overwrite an existing override.
+
+- **Template repository CI** now runs the canonical eight-scenario render
+  smoketest and strict template documentation build on every push and pull
+  request, with read-only repository permissions and cancellation of stale runs.
+
+- **Pi Coding Agent support** as a fifth `coding_agents` choice. Pi uses the
+  shared root `AGENTS.md` and the same canonical workflow skills exposed through
+  `.agents/skills`; the sandbox installs the official Pi package with npm
+  lifecycle scripts disabled. Spec-Kit's `pi` integration is selectable.
+
 - **Optional CI/CD** via new Copier prompt `cicd_provider` (default
   `github_actions`, so existing renders are unchanged). Three choices:
   `github_actions` (the previous always-on `.github/workflows/ci.yml`,
   `docs.yml`, `dependabot.yml`), `gitlab_ci` (a new commented
-  `.gitlab-ci.yml` baseline with `lint → test → build → push → deploy`
-  stages), or `none` (no CI files). The GitLab pipeline gates
-  `build`/`push`/`deploy` on protected refs (`$CI_COMMIT_REF_PROTECTED`),
-  tags every image with the immutable commit SHA as a rollback anchor, and
-  keeps `deploy` manual. The GitHub Actions files plus
+  `.gitlab-ci.yml` baseline that runs `just qa` and strict `just docs-build`),
+  or `none` (no CI files). Packaging, image publishing, and deployment remain
+  project-specific because the generic template cannot infer a delivery target.
+  The GitHub Actions files plus
   `pull_request_template.md` now render only for `github_actions` (conditional
   filenames); `dependabot.yml` and `pull_request_template.md` gained a
   `.jinja` suffix to support that. `shared_deny_write` and `AGENTS.md`'s
@@ -39,6 +55,49 @@ their own `CHANGELOG.md` (see `template/CHANGELOG.md.jinja`).
 
 ### Changed
 
+- Added Copier validators for project/package identity, human-readable
+  single-line fields, email, GitHub owner, backend URLs, model aliases, and SQL
+  dialects. Free-text values are context-quoted in TOML/YAML/JSON/Python output,
+  and the render gate now proves both invalid-input rejection and quoted-value
+  round trips.
+- Amended Quality Principle IV to version 1.2.1: `just qa` remains the single
+  gate, with static checks in Pre-Commit and tests executed once as its final
+  step. GitHub and GitLab CI now invoke that canonical command, Ruff 0.16.2 is
+  synchronized between the project environment and its immutable hook commit,
+  and stale five-scenario/CI wording was corrected.
+- Tightened agent permissions around a shared Bash allowlist. Claude Code and
+  OpenCode now auto-allow only canonical quality/read-only commands; WebFetch,
+  dependency/tool installation, Git mutations, Docker/sandbox operations,
+  external-directory access, and unknown shell commands require approval.
+  Secret-path coverage and protected persistent-context surfaces now include
+  common cloud/package credential files, `agent-guidelines/`, `skills/`, the
+  Spec-Kit constitution, and `uv.lock`.
+- Sandbox secret handling now defaults to no plaintext `.env` generation and
+  documents 1Password `op://…` references resolved via `op run`. The project
+  `.env` is masked inside the container so Bash cannot bypass agent read-denies,
+  while a clearly documented `agent-home` volume persists CLI logins across
+  ephemeral shells and is destroyed by `sandbox-nuke`.
+- Hardened executable supply-chain inputs: GitHub Actions and Pre-Commit hooks
+  are commit-pinned, automated installs use exact package versions, Spec-Kit is
+  fixed to a reviewed commit, sandbox and CI base images use manifest digests,
+  service images use digests, and CI dependency syncs enforce `uv.lock` with
+  `--frozen`. The Dockerfile no longer executes remote `curl | shell`
+  installers; it copies Node from a pinned build stage and installs uv/just
+  through pinned Python packages. Claude's statusline now renders its pinned
+  ccusage version instead of leaking an unresolved Copier expression.
+- Corrected Codex CLI integration against current official configuration:
+  GPT-5.6 is the project default; `default_permissions` no longer conflicts
+  with `sandbox_mode`; custom subagents use the required schema and native
+  auto-discovery; the Stop hook emits valid JSON and avoids recursive blocking;
+  repository skills are exposed through `.agents/skills`; and LiteLLM routing
+  is provided as a user-scoped Codex profile because project config cannot
+  override providers or credentials.
+- Replaced inaccurate cross-agent "feature parity" claims with explicit
+  capability documentation and synchronized CI/CD, agent, Python-version, and
+  render-scenario docs with the actual template behavior.
+- Spec-Kit bootstrap now installs integration assets even when the selected
+  agent executable is not yet installed on the generation host; the render
+  gate verifies Pi's generated prompts and Spec-Kit metadata.
 - Renamed `guidelines/` → `agent-guidelines/` in all generated projects: the
   top-level directory (`template/guidelines/` → `template/agent-guidelines/`),
   the MkDocs stub directory (`template/docs/guidelines/` →
@@ -46,6 +105,23 @@ their own `CHANGELOG.md` (see `template/CHANGELOG.md.jinja`).
   `Agent Guidelines`), and all path references across AGENTS.md.jinja, skills,
   explanation docs, tool configs (`.aider.conf.yml.jinja`, `opencode.json.jinja`),
   and this repo's own `AGENTS.md`, `README.md`, and `_dev/` docs.
+
+### Removed
+
+- Removed OpenSpec from the SDD prompt, generation task, sandbox image, examples,
+  and rendered documentation. Spec-Kit remains the single optional SDD
+  framework, avoiding OpenSpec's second project-wide `AGENTS.md` source. The SDD
+  prompt is skipped for Aider-only projects because Spec-Kit has no Aider
+  integration.
+
+### Fixed
+
+- Made the render smoketest stage a generated project and execute its real
+  `just qa` and strict `just docs-build` gates, eliminating the previous
+  Pre-Commit false pass on an untracked fresh render. Copier now preserves final
+  newlines in Jinja output, the machine-owned `.copier-answers.yml` is excluded
+  from EOF rewriting, the skills overview is rendered as Jinja, and stale
+  template-doc navigation entries were removed.
 
 ## [1.0.0] - 2026-06-03
 

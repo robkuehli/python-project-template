@@ -95,7 +95,8 @@ Two memory tiers, kept apart deliberately:
     inspect/edit via `/memory`. `autoMemoryEnabled: true` in `.claude/settings.json`.
 {%- endif %}
 {%- if 'codex' in coding_agents %}
-  - Codex: `features.memories = true` (Chronicle); managed by Codex itself.
+  - Codex: `features.memories = true`; managed by Codex itself. Chronicle
+    screen context is a separate desktop-only opt-in.
 {%- endif %}
 
 - **Team memory** — what is shared via git and applies to everyone working on
@@ -136,19 +137,13 @@ Two memory tiers, kept apart deliberately:
 
 ## Spec-Driven Development
 
-This project uses **{{ 'Spec-Kit' if sdd_framework == 'spec-kit' else 'OpenSpec' }}** for non-trivial features. For tasks that touch >3
+This project uses **Spec-Kit** for non-trivial features. For tasks that touch >3
 files, change a schema, or rebuild a pipeline, **start from a spec, not a chat**.
 The full workflow lives in `docs/how-to/spec-driven-development.md`.
 
-{% if sdd_framework == 'spec-kit' -%}
-- Spec artefacts live under `.specify/specs/<feature>/`.
+- Spec artefacts live under `specs/<feature>/`.
 - Precedence on conflict: **Constitution > spec.md > plan.md > tasks.md > code**.
 - Tasks marked `[P]` may run in parallel.
-{%- else -%}
-- Active changes live under `openspec/changes/<change>/`; archived specs under `openspec/specs/`.
-- `openspec/AGENTS.md` is the project-wide constitution — read before `/opsx:propose`.
-- Delta markers (`ADDED`/`MODIFIED`/`REMOVED`) make the contract change explicit.
-{%- endif %}
 {%- endif %}
 {%- if 'claude_code' in coding_agents %}
 
@@ -181,6 +176,11 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
 
 - **Plan Mode** (`Shift+Tab`, read-only) = the architect seat; **Default** = the coder.
   Both share the active model.
+- **Permissions:** safe read-only Git and canonical quality commands are
+  allowlisted. Web fetches, dependency/tool installation, Git mutations,
+  sandbox/Docker commands, and all other shell commands require approval;
+  destructive commands, secret reads, and writes to persistent guidance or
+  guardrail files are denied.
 - Switch the model in-session with `/model opus|sonnet|haiku`; `effortLevel` defaults
   to `high` (`/effort xhigh` for hard problems). One profile — no profile juggling.
 - Read-only subagents auto-delegate (`.claude/agents/`): `researcher` (Haiku recon,
@@ -193,7 +193,7 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
   learning into team memory when it applies to colleagues.
 - Context: the statusline (`.claude/scripts/statusline.sh`) auto-uses
   [`ccusage`](https://github.com/ryoppippi/ccusage) if installed
-  (`npm i -g ccusage`) for live token/cost tracking, otherwise falls back to
+  (`npm i -g ccusage@{{ tool_versions.ccusage }}`) for live token/cost tracking, otherwise falls back to
   `model · dir · branch`. Auto-Compact is on; `/compact` manually at ~70 % usage,
   `/clear` on a topic switch.
 - Quality-gate hooks: a `PreToolUse` hook tail-filters verbose `pytest`/`just qa`
@@ -209,27 +209,30 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
 - **Auth:** run `codex login` once (ChatGPT account).
 {%- else %}
 
-- **Auth:** export `OPENAI_API_KEY=<litellm-token>` and
-  `OPENAI_BASE_URL={{ litellm_base_url }}` in your shell — never commit either.
-  Default model: `gpt-5.5` (pinned in `.codex/config.toml`).
+- **Auth:** copy `.codex/litellm.config.toml.example` to the user-scoped
+  `~/.codex/litellm.config.toml`, export `OPENAI_API_KEY=<litellm-token>`, and
+  start with `codex --profile litellm`. Codex intentionally ignores provider
+  routing in project-local config. Default model: `gpt-5.6`.
 {%- endif %}
 
-- Codex reads `AGENTS.md` natively. Config lives in `.codex/config.toml`:
-  `model = "gpt-5.5"`, `sandbox_mode = "workspace-write"`,
-  `approval_policy = "on-request"`, `model_reasoning_effort = "medium"`,
-  `default_permissions = ":workspace"`. For CI use flags on `codex exec`,
-  not config overrides.
-- **Subagents** (`.codex/agents/*.toml`, referenced in `config.toml`):
+- Codex reads `AGENTS.md` and `.agents/skills/` natively. Config lives in
+  `.codex/config.toml`: `model = "gpt-5.6"`, `approval_policy = "on-request"`,
+  `model_reasoning_effort = "medium"`, and `default_permissions = ":workspace"`.
+  The permission profile owns the sandbox policy, so `sandbox_mode` is not set
+  alongside it. For CI use flags on `codex exec`, not project config overrides.
+- **Subagents** (auto-discovered from `.codex/agents/*.toml`):
   `researcher` (recon), `reviewer` (independent diff review), `security-auditor`.
-  Parity with Claude Code / OpenCode. Subagents cannot spawn subagents.
-- **Memory:** `features.memories = true` (Chronicle) is the private tier —
-  Codex manages it natively. Team memory is `agent-guidelines/*.md` + this file.
+  Each custom agent is read-only and inherits the main model unless explicitly
+  overridden at spawn time.
+- **Memory:** `features.memories = true` enables Codex Memories as the private
+  tier. Chronicle's screen capture is a separate, desktop-only opt-in and is
+  not enabled by this project. Team memory is `agent-guidelines/*.md` + this file.
   Use `/capture` to promote a private learning into team memory.
 - **Verify-on-Stop:** a `Stop` hook (`.codex/hooks/verify-on-stop.sh`) reminds
   about `just qa` when a session ends with uncommitted diff. Set
-  `CODEX_VERIFY_HARD_BLOCK=1` for a hard gate before the turn can end.
+  `CODEX_VERIFY_HARD_BLOCK=1` for a single continuation when the gate fails.
 - **Context:** `/statusline` and `/status` are built-in. Install
-  [`ccusage`](https://ccusage.com/guide/codex/) (`npm i -g ccusage`) for token/cost
+  [`ccusage`](https://ccusage.com/guide/codex/) (`npm i -g ccusage@{{ tool_versions.ccusage }}`) for token/cost
   tracking. `/compact` around ~70 % context usage; `/clear` on topic switch.
 {%- if include_context7 %}
 - **Context7** is enabled (opt-in): `[mcp_servers.context7]` in `.codex/config.toml`
@@ -239,10 +242,26 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
   if you want current library docs in-context. Avoid filesystem / git / github
   MCPs — `gh` and shell are 4–32× cheaper per task.
 {%- endif %}
-- **Permissions:** Codex uses the `:workspace` sandbox profile. Maschinelles
-  Bash-Deny ist nicht aktiviert (Codex' execpolicy deny-Syntax ist noch nicht
-  TOML-stabil); die Verbote aus `shared_deny_bash` gelten verbal via this file,
-  und pre-commit (`gitleaks`, `detect-private-key`) ist die harte Backstop-Ebene.
+- **Permissions:** Codex uses the `:workspace` permission profile. The shared
+  destructive-command rules remain in this file because this template does not
+  install a separate execpolicy ruleset; pre-commit (`gitleaks`,
+  `detect-private-key`) is the hard backstop.
+{%- endif %}
+{%- if 'pi' in coding_agents %}
+
+## Pi Coding Agent specifics
+
+- Pi reads `AGENTS.md` and `.agents/skills/` natively. Start it with `pi`; use
+  `/login` for a supported subscription or API provider and `/model` to choose
+  the model. Provider credentials and model preferences stay user-scoped.
+- Pi deliberately keeps its core small: it has no built-in subagents, plan
+  mode, permission prompts, MCP, or Verify-on-Stop hook. Add those only through
+  reviewed project extensions when a concrete need justifies the extra surface.
+- Pi project resources require an explicit trust decision on first interactive
+  use. Review the repository before accepting that prompt.
+- Pi has no native dynamic team memory. Shared guidance comes from this file,
+  `agent-guidelines/*.md`, and the shared skills; use `/capture` to promote a
+  durable learning.
 {%- endif %}
 {%- if 'aider' in coding_agents %}
 
@@ -306,12 +325,12 @@ The full workflow lives in `docs/how-to/spec-driven-development.md`.
 - **Memory:** OpenCode has no native dynamic memory. The `instructions` array in
   `opencode.json` loads `AGENTS.md` + `agent-guidelines/*.md` as static project memory
   (team tier). Use `/capture` to promote a learning into `agent-guidelines/*.md`.
-- `permission` block in `opencode.json` uses granular object syntax: denies
-  destructive bash patterns (`rm -rf`, `sudo`, `curl|bash`), denies writes to
-  guardrail files (`shared_deny_write`), denies reads of secrets (`.env`,
-  `*.pem`), and asks before `git push` / hard-reset / rebase. `doom_loop` is
-  set to `ask`. That file is the SPOT for runtime tool glue; consult it, don't
-  restate it here.
+- `permission` block in `opencode.json` uses granular object syntax. Bash is
+  ask-by-default with a small shared allowlist for read-only Git and canonical
+  quality commands; destructive commands are denied. Writes to persistent
+  guidance/guardrail files and reads of secrets are denied, external-directory
+  access and doom loops ask. That file is runtime glue backed by the canonical
+  lists in the template's `copier.yml`.
 {%- if include_context7 %}
 - **Context7** is enabled (opt-in): `mcp.context7` in `opencode.json` fetches
   current library docs. External service (`mcp.context7.com`) — queries leave

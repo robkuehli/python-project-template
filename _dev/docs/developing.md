@@ -9,7 +9,7 @@ python-project-template/           # git root = Copier entry point
 ├── copier.yml                      # prompts, tasks, exclude rules (_subdirectory: "template")
 ├── README.md                       # GitHub landing page (dev)
 ├── .gitignore                      # dev gitignore
-├── .github/workflows/docs.yml      # deploys THIS site to GitHub Pages
+├── .github/workflows/              # verifies the template and deploys THIS docs site
 ├── .claude/                        # agent config for the template development
 ├── _dev/                           # all dev-only files (never copied into a generated project)
 │   ├── CHANGELOG.md                # template-eigener Changelog
@@ -36,28 +36,39 @@ template → `_dev/docs/`, product → `template/docs/`.
 
 ## Render smoketest
 
-`render-test` generates three representative scenarios into `/tmp`, then
-validates the rendered JSON configs and Docker-Compose files:
+`render-test` generates eight representative scenarios into `/tmp`, validates
+the rendered configs and Docker-Compose files, and runs the generated project's
+real `just qa` plus strict `just docs-build` gates in the GitLab scenario. The
+scenario is staged first so Pre-Commit cannot return a false-positive "no files
+to check" result for a freshly initialized repository. A negative scenario also
+proves that an invalid project slug is rejected before tasks execute:
 
 ```bash
 just -f _dev/justfile render-test
 ```
 
-The four scenarios (see the justfile comments for full details):
+The eight scenarios (see the justfile comments for full details):
 
 - **Test 1** — Claude-Code-only, no sandbox (minimal path).
 - **Test 2** — full stack with Langfuse v3 + Crawl4AI (exercises every
   profile-gated `:?` guard).
 - **Test 3** — full stack with MLflow (the other Compose Jinja branch).
-- **Test 4** — all four agents + Context7 + Python 3.14 (covers Codex
-  `config.toml`, granular OpenCode permissions, Context7-conditional blocks,
-  and 3.14 tooling pins).
+- **Test 4** — all five agents + Context7 + Python 3.14 (covers Codex
+  `config.toml` and subagents, Pi skill discovery, granular OpenCode
+  permissions, Context7-conditional blocks, and 3.14 tooling pins).
 - **Test 5** — Codex (LiteLLM) + OpenCode (hybrid) + Context7=false + Python
   3.12 (covers Codex-LiteLLM AGENTS.md text, OpenCode hybrid model block,
   Context7 else-branch, and 3.12 tooling pins; no sandbox → fast).
+- **Test 6** — GitLab CI, with GitHub-only files absent.
+- **Test 7** — no CI/CD, with both provider surfaces absent.
+- **Test 8** — Pi-only + Spec-Kit (covers Pi selection, `.agents/skills`, and
+  the remaining SDD branch).
 
 The test runs with `--defaults`, so a shift in `copier.yml` defaults moves the
 covered scope with it instead of silently going stale.
+
+The repository's `Template CI` workflow runs this same command followed by the
+strict template documentation build on every push and pull request.
 
 ## Iterating locally
 

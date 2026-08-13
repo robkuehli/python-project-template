@@ -5,14 +5,14 @@
 #   - Ollama    →  (none required; the daemon runs locally)
 # See `.env.template` for the local-dev variant.
 
-model: {{ aider_model }}
+model: {{ aider_model | tojson }}
 
 {%- if aider_provider == 'litellm' %}
 # LiteLLM gateway (OpenAI-compatible).
-openai-api-base: {{ litellm_base_url }}
+openai-api-base: {{ litellm_base_url | tojson }}
 {%- else %}
 # Ollama (local). Aider talks to Ollama via the OpenAI-compatible endpoint.
-openai-api-base: {{ ollama_base_url }}/v1
+openai-api-base: {{ (ollama_base_url ~ '/v1') | tojson }}
 openai-api-key: ollama          # any non-empty value; Ollama ignores it
 {%- endif %}
 

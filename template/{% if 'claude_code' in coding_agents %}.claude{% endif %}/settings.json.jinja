@@ -11,7 +11,7 @@
   "env": {
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "16384"
 {%- if claude_provider == 'litellm' %},
-    "ANTHROPIC_BASE_URL": "{{ litellm_base_url }}",
+    "ANTHROPIC_BASE_URL": {{ litellm_base_url | tojson }},
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5",
@@ -19,32 +19,14 @@
 {%- endif %}
   },
   "permissions": {
-    "allow": [
-      "Read",
-      "Glob",
-      "Grep",
-      "WebSearch",
-      "WebFetch",
-      "Edit",
-      "Write",
-      "Bash(just *)",
-      "Bash(uv sync*)",
-      "Bash(uv run*)",
-      "Bash(uv tree*)",
-      "Bash(uv lock*)",
-      "Bash(uvx *)",
-      "Bash(git status)",
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(git show*)",
-      "Bash(pytest*)",
-      "Bash(ruff *)",
-      "Bash(mypy *)"
-    ],
-{#- Build the ask/deny arrays in-jinja, then dump them via `tojson` —
+{#- Build the allow/ask/deny arrays in-jinja, then dump them via `tojson` —
     avoids fragile trailing-comma logic when any of the source lists is
     empty or reordered. -#}
-{%- set ask_items = [] -%}
+{%- set allow_items = ['Read', 'Glob', 'Grep', 'WebSearch', 'Edit', 'Write'] -%}
+{%- for pattern in shared_allow_bash -%}
+{%- set _ = allow_items.append('Bash(' ~ pattern ~ ')') -%}
+{%- endfor -%}
+{%- set ask_items = ['WebFetch'] -%}
 {%- for pattern in shared_ask_bash -%}
 {%- set _ = ask_items.append('Bash(' ~ pattern ~ ')') -%}
 {%- endfor -%}
@@ -62,6 +44,7 @@
 {%- for pattern in shared_deny_bash -%}
 {%- set _ = deny_items.append('Bash(' ~ pattern ~ ')') -%}
 {%- endfor %}
+    "allow": {{ allow_items | tojson }},
     "ask": {{ ask_items | tojson }},
     "deny": {{ deny_items | tojson }},
     "defaultMode": "default"

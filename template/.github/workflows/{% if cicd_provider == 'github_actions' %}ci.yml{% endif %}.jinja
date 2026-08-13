@@ -2,29 +2,31 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   qa:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up uv + Python
         # setup-uv v8 stopped publishing moving major/minor tags as a
         # supply-chain hardening measure — pin to a full version and bump
         # deliberately. See https://github.com/astral-sh/setup-uv/releases.
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           python-version: "{{ python_version }}"
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-groups
+        run: uv sync --all-groups --frozen
 
-      - name: Pre-commit (lint, format, type-check, security)
-        run: uv run pre-commit run --all-files --show-diff-on-failure
+      - name: Install task runner
+        run: uv tool install rust-just=={{ tool_versions.just }}
 
-      - name: Tests
-        run: uv run pytest --cov --cov-report=term-missing
+      - name: Canonical quality gate
+        run: just qa

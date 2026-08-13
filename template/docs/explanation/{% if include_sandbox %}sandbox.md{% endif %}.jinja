@@ -12,7 +12,8 @@ directly on your machine and a hijacked or confused agent (OWASP ASI02 *Tool
 Misuse*) can read `~/.ssh`, `~/.aws`, your shell's `.env`, and any file you can.
 The sandbox is a containerised dev environment that constrains that blast
 radius: the repository is mounted at `/workspace`, and **nothing else from the
-host is visible**.
+host is visible by default**. A deliberate local opt-in can expose selected
+global instruction files read-only; it never exposes a complete agent home.
 
 It is an *additional* layer, not a replacement for the permission system in
 {% if 'claude_code' in coding_agents %}`.claude/settings.json`{% endif %}{% if 'claude_code' in coding_agents and 'opencode' in coding_agents %} / {% endif %}{% if 'opencode' in coding_agents %}`opencode.json`{% endif %}{% if not ('claude_code' in coding_agents or 'opencode' in coding_agents) %}your agent's config{% endif %}.
@@ -26,16 +27,46 @@ What the agent shell can see:
 - ✅ **The repo**, mounted read-write at `/workspace` — the only writable host path.
 - ✅ **Explicitly forwarded env vars** — just the backend auth tokens you wired
   up at generation time, listed in `docker-compose.yml`.
+- ✅ **Persistent agent login state** in the Docker-managed `agent-home` volume.
+  It is not a host-home mount, but it is secret-bearing and unencrypted at rest.
+- ✅ **Selected global agent instructions only after explicit opt-in**, mounted
+  read-only through a local, git-ignored Compose override.
 
 What it cannot see:
 
 - ❌ Host filesystem outside the repo — `~/.ssh`, `~/.aws`, your shell `.env`,
-  and personal config are **never** mounted.
+  and other personal config are not mounted. The optional instruction helper
+  allowlists only native Claude/Codex instruction paths.
+- ❌ The project's `.env` contents — Compose resolves it on the host, then a
+  `/dev/null` overlay masks the file inside the agent container.
 - ❌ Other containers — the sandbox runs on its own dedicated Docker network.
 
 If the agent needs a new credential, you add it explicitly to
 `docker-compose.yml` and source it from your shell. Nothing is forwarded
 implicitly.
+
+The preferred host-side pattern is to keep only `op://…` references in `.env`
+and start Compose through `op run --env-file=.env -- just sandbox-up`. The
+resolved values exist only in the child process environment and in explicitly
+forwarded container variables; Docker Compose does not resolve 1Password
+references by itself.
+
+Global instruction files are executable context, not passive documentation: a
+malicious or stale rule can influence agent actions in every sandbox session.
+Consequently, the opt-in helper displays every source, asks for confirmation,
+mounts it read-only, and leaves repository guidance untouched. Read-only
+prevents container-side persistence into the source; it does not make the
+instructions trustworthy or override enforced permission rules.
+
+## Login persistence is a security boundary
+
+The `agent-home` volume makes subscription logins survive `sandbox-shell`
+containers created with `--rm`. Some CLIs store refresh/access tokens as files
+there; for example, Codex may use `~/.codex/auth.json`. Anyone with access to the
+Docker daemon can inspect the volume. Do not copy it into the repository or
+share it, and run `just sandbox-nuke` to revoke the local persisted copy before
+handing over the machine. Remote account-side revocation remains necessary if a
+token may have been exposed.
 
 ## What the sandbox does *not* isolate
 

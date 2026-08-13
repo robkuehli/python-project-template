@@ -23,8 +23,8 @@ a Python project that is:
 
 - **Productive** with or without an AI coding agent — same commands, same gates,
   same conventions.
-- **Backend-agnostic** across Claude Code, Codex CLI, Aider and OpenCode, with
-  pluggable LiteLLM / subscription / Ollama backends per tool.
+- **Agent-agnostic** across Claude Code, Codex CLI, Pi, Aider and OpenCode, with
+  native project guidance and the smallest useful runtime-specific glue.
 - **Safe to delegate** — secrets, quality gates and review hooks are wired up
   before the first agent prompt is typed.
 
@@ -57,7 +57,7 @@ If a Copier question can be skipped by inferring from another answer, it is.
 
 Behaviour rules for AI agents live exclusively in **`AGENTS.md`** and
 **`agent-guidelines/*.md`**. Tool-specific files (`.claude/settings.json`,
-`opencode.json`, `.aider.conf.yml`, `CLAUDE.md`) carry only the glue that
+`.codex/config.toml`, `opencode.json`, `.aider.conf.yml`, `CLAUDE.md`) carry only the glue that
 each runtime needs — backend URL, model alias, hook wiring.
 
 **Implication:** No rule is written in two places. `CLAUDE.md` redirects to
@@ -120,7 +120,8 @@ These are the minimum gates every generated project ships with:
 - **Docs** — `MkDocs` Material + `mkdocstrings`, Diátaxis layout
 - **Changelog** — Keep a Changelog 1.1.0 + SemVer 2.0.0
 
-Each gate is wired in `pre-commit` and surfaced through `just`.
+Every check is surfaced through `just qa`: fast static checks are wired into
+`pre-commit`, while tests run once as the final `just qa` step and in CI.
 
 ---
 
@@ -142,4 +143,4 @@ inherit them by reference — they may add project-specific guidelines under
 `agent-guidelines/`, but they may not relax a principle without amending the
 template upstream.
 
-**Version**: 1.1.0 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-06-18
+**Version**: 1.2.1 | **Ratified**: 2026-06-14 | **Last Amended**: 2026-08-12

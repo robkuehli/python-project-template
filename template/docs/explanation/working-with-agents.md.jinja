@@ -93,8 +93,15 @@ Permission enforcement differs by tool:
 |---|---|---|
 | Claude Code | `.claude/settings.json` `permissions.allow/ask/deny` | Bash, Read, Write, Edit — all pattern-based |
 | OpenCode | `opencode.json` `permission` (granular object syntax) | `bash`, `edit`, `read`, `external_directory`, `doom_loop` — pattern-based per tool |
-| Codex | `.codex/config.toml` `default_permissions = ":workspace"` | Sandbox profile (execpolicy deny-syntax not yet TOML-stable; guardrails are verbal in `AGENTS.md`) |
+| Codex | `.codex/config.toml` `default_permissions = ":workspace"` | Built-in permission profile; project-specific destructive-command rules remain in `AGENTS.md` |
+| Pi | none built in | Add a reviewed permission-gate extension or use the Docker sandbox when enforcement is required |
 | Aider | none | No native permission system — `AGENTS.md` + pre-commit are the only safety net |
+
+Denying Edit/Write alone does not stop a shell command from rewriting the same
+file. Claude Code and OpenCode therefore allowlist only routine quality and
+read-only Git commands; other shell commands ask by default, and the Docker
+sandbox adds read-only overlays for trust-sensitive paths. Pi and Aider need
+the sandbox plus human diff review when equivalent enforcement is required.
 
 Deny rules are belt-and-suspenders to the pre-commit `gitleaks`/
 `detect-private-key` hooks. Both should be in place; either one alone is too
@@ -108,7 +115,8 @@ shared project rules:
 | Tool | Private memory (local, automatic) | Team memory (git-shared, curated) | Bridge |
 |---|---|---|---|
 | Claude Code | Auto-Memory (`~/.claude/projects/<project>/memory/`), `/memory` to inspect/edit | `agent-guidelines/*.md`, `AGENTS.md` | `/capture` skill (manual promote) |
-| Codex | `features.memories` (Chronicle), managed by Codex | `agent-guidelines/*.md`, `AGENTS.md` | `/capture` skill (manual promote) |
+| Codex | `features.memories`, managed by Codex (Chronicle screen context remains a separate desktop opt-in) | `agent-guidelines/*.md`, `AGENTS.md` | `/capture` skill (manual promote) |
+| Pi | none (no native dynamic memory) | `AGENTS.md` + `.agents/skills` | `/capture` skill (manual promote) |
 | OpenCode | none (no native dynamic memory) | `instructions` array loads `agent-guidelines/*.md` + `AGENTS.md` | `/capture` skill (manual promote) |
 | Aider | none (no native dynamic memory) | `read:` array loads `agent-guidelines/*.md` + `AGENTS.md` | `/capture` skill (manual promote) |
 
@@ -125,6 +133,11 @@ future situation**. Vague warnings, one-offs, and duplicates of existing rules g
 in the bin.
 
 ## Subagents (when forking context helps)
+
+Claude Code, Codex, and OpenCode provide the configured subagent path in this
+template. Pi can add subagents through extensions; Aider has no equivalent
+project integration here. Capability differences are intentional rather than
+papered over with runtime-specific emulation.
 
 A subagent runs in its **own** context window with a tighter system prompt and
 a narrower tool set. Use one when:

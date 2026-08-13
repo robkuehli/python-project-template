@@ -22,6 +22,9 @@ just sandbox-shell
 {%- if 'codex' in coding_agents %}
 #     codex           # start Codex CLI
 {%- endif %}
+{%- if 'pi' in coding_agents %}
+#     pi              # start Pi Coding Agent
+{%- endif %}
 {%- if 'aider' in coding_agents %}
 #     aider           # start Aider
 {%- endif %}
@@ -34,10 +37,35 @@ just sandbox-shell
 just sandbox-down
 ```
 
-`just sandbox-nuke` additionally removes the named volumes (caches, observability
-data) — destructive, use when you want a clean slate.
+`just sandbox-nuke` additionally removes the named volumes (persisted agent
+logins and observability data) — destructive, use when you want a clean slate or
+before handing the machine/project to someone else.
 
 ## Populate the secrets in `.env`
+### Preferred: 1Password references
+
+Keep references rather than plaintext in `.env`:
+
+```dotenv
+SEARXNG_SECRET=op://<vault>/<item>/SEARXNG_SECRET
+OPENAI_API_KEY=op://<vault>/<item>/OPENAI_API_KEY
+```
+
+After installing and signing in to the 1Password CLI, resolve the references
+only for the startup process:
+
+```bash
+op run --env-file=.env -- just sandbox-up
+```
+
+Use the same prefix for commands that need other referenced values. Compose
+itself does not resolve `op://…`; without `op run`, it would pass the reference
+string literally. The agent container cannot read the host `.env` file because
+it is masked by a `/dev/null` overlay, but it receives variables explicitly
+listed in `docker-compose.yml`.
+
+### Alternative: locally generated plaintext
+
 {% if sandbox_auto_init %}
 If `copier copy` ran with `--trust` and both `just` + `openssl` were on the PATH,
 `.env` was already populated with random hex values during generation. If any of
@@ -62,6 +90,49 @@ Or set them by hand, e.g. `echo "SEARXNG_SECRET=$(openssl rand -hex 32)" >> .env
 `.env` is git-ignored and never committed. See the
 [sandbox reference](../reference/sandbox.md#generated-secrets) for the full key list.
 {% endif %}
+
+## Persisted agent logins
+
+The first login performed inside `just sandbox-shell` is stored in the
+Docker-managed `agent-home` volume and reused by later `--rm` shells. Treat that
+volume as a credential store. `just sandbox-down` keeps it;
+`just sandbox-nuke` deletes it. For Codex subscription login in a headless
+container, use `codex login --device-auth` when available.
+
+## Opt in to global user instructions
+
+By default, the sandbox does not see instructions from your host home directory.
+To reuse the standard user-scope instructions for the agents selected when this
+project was generated, run:
+
+```bash
+just sandbox-enable-user-instructions
+```
+
+The recipe lists the sources it found and asks before creating the local,
+git-ignored `docker-compose.override.yml`. Depending on the selected agents and
+available files, it can mount:
+
+{% if 'claude_code' in coding_agents %}
+- `~/.claude/CLAUDE.md`
+- `~/.claude/rules/`
+{% endif %}
+{% if 'codex' in coding_agents %}
+- `~/.codex/AGENTS.override.md`, or `~/.codex/AGENTS.md` when no override exists
+{% endif %}
+
+Each source is mounted read-only at its native user-scope path. Repository
+`AGENTS.md` / `CLAUDE.md` remain unchanged and load at project scope. The helper
+never mounts the complete `.claude/` or `.codex/` directory, because those
+directories may also contain credentials, sessions, hooks, MCP settings, and
+other sensitive state.
+
+The override contains local host paths and protects itself with a read-only
+container mount. It is not a hard policy boundary: anyone controlling the host
+or Docker daemon can still change mounts. Review global instructions as trusted
+input before exposing them to a project. Remove `docker-compose.override.yml`
+to return to the isolated default; rerun the helper after adding or removing a
+source.
 
 ## Forward a new environment variable
 

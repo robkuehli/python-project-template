@@ -53,9 +53,9 @@ uv remove httpx
 
 ## Change the Python version
 
-The template's `python_version` prompt currently offers **3.12** and **3.13** only.
+The template's `python_version` prompt currently offers **3.12–3.14**.
 Ruff, mypy, and pylint each lag a few months behind upstream Python when it comes
-to landing `target-version`/`py-version` flags, so newer releases (3.14+) are
+to landing `target-version`/`py-version` flags, so newer releases (3.15+) are
 intentionally not yet selectable — pick them only after the next template bump
 once the linter stack has caught up.
 
@@ -91,5 +91,14 @@ cp .env.template .env   # then fill in real values
 just docs-build    # build the static site into ./site (fails on warnings)
 ```
 
+{% if cicd_provider == 'github_actions' -%}
 Pushing to `main` triggers the `Docs` workflow, which runs `mkdocs gh-deploy` and
 publishes to GitHub Pages.
+{%- elif cicd_provider == 'gitlab_ci' %}
+The generated GitLab pipeline verifies this strict build but does not assume a
+documentation host. Add a publishing job once the target environment and
+credentials are known.
+{%- else %}
+No documentation deployment workflow was generated; publish `site/` through
+the CI/CD system chosen by the project.
+{%- endif %}

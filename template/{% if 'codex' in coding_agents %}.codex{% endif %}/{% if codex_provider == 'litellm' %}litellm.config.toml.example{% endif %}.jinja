@@ -1,0 +1,16 @@
+# User-level Codex profile for this project's LiteLLM gateway.
+#
+# Project-local `.codex/config.toml` cannot redirect providers or credentials;
+# Codex deliberately ignores those keys there. Copy this file once per machine:
+#
+#   cp .codex/litellm.config.toml.example ~/.codex/litellm.config.toml
+#   export OPENAI_API_KEY="<litellm-token>"
+#   codex --profile litellm
+
+model_provider = "litellm"
+
+[model_providers.litellm]
+name = "LiteLLM gateway"
+base_url = {{ litellm_base_url | tojson }}
+env_key = "OPENAI_API_KEY"
+wire_api = "responses"

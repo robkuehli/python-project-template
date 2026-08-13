@@ -41,6 +41,12 @@ dependencies. Runtime dependencies live under `[project.dependencies]`; tooling
 lives in `[dependency-groups]` (`dev` and `docs`). `uv sync` makes the environment
 match the lockfile; `uv run …` executes a command inside it.
 
+Executable infrastructure is pinned as well: CI Actions and Pre-Commit hooks
+use immutable commit SHAs, sandbox images use registry digests, and CLIs baked
+into the sandbox use exact package versions. The adjacent version comments and
+image tags preserve readability; update the pin and its comment together, then
+run `just qa` and rebuild the sandbox.
+
 ### just — task runner
 
 A thin wrapper that maps memorable recipes to real commands (see the `justfile`).
@@ -116,28 +122,43 @@ Builds this site with the Material theme. `mkdocstrings` generates the API
 reference from docstrings, and the changelog page is pulled straight from
 `CHANGELOG.md`. Configured in `mkdocs.yml`.
 
+{% if cicd_provider == 'github_actions' -%}
 ### GitHub Actions &amp; Dependabot — CI and updates
 
-`ci.yml` runs uv, the pre-commit checks, and pytest on every push and PR;
+`ci.yml` runs the same `just qa` gate used locally on every push and PR;
 `docs.yml` deploys the docs to GitHub Pages. Dependabot proposes weekly updates
 for dependencies and Actions.
+{%- elif cicd_provider == 'gitlab_ci' %}
+### GitLab CI — quality baseline
+
+`.gitlab-ci.yml` runs the same `just qa` gate used locally and builds the docs
+with `just docs-build`. It deliberately does not package, publish, or
+deploy: a generic Python template cannot infer whether the project is a library,
+service, container, or deployable application.
+{%- else %}
+### CI/CD — intentionally unconfigured
+
+This project generated no CI/CD files. Local `just qa` remains the quality gate;
+wire the same command into the CI system chosen by the project.
+{%- endif %}
 
 ### Agent files, skills &amp; env
 
-`AGENTS.md` is the single source of truth for AI coding agents (read natively by
-Claude Code, Codex CLI, Aider, and OpenCode). Tool-specific config files
-(`.claude/`, `opencode.json`, `.aider.conf.yml`) only contain backend wiring —
+`AGENTS.md` is the single source of truth for AI coding agents (shared by
+Claude Code, Codex CLI, Pi, Aider, and OpenCode). Tool-specific config files
+(`.claude/`, `.codex/`, `opencode.json`, `.aider.conf.yml`) only contain runtime wiring —
 behaviour rules live exclusively in `AGENTS.md` and `agent-guidelines/`.
 
 The Pareto skill set (`/explore`, `/spec`, `/plan`, `/test`, `/delegate`,
 `/review`, `/verify`, `/debug`, `/capture`) lives in `skills/` in the open
 [Agent Skills](https://agents.md) `SKILL.md` format. Each tool that supports
-skill discovery loads them on demand.
+skill discovery loads them on demand. Codex and Pi receive the same canonical
+skills through the `.agents/skills` symlink.
 
 Local secrets go in `.env` (git-ignored), copied from the tracked
 `.env.template`. The template's `.env.template` is rendered with the right
-hints for the backend(s) you selected (LiteLLM, Ollama, or subscription).
-{% if include_sandbox %}
+hints for the backend(s) you selected (LiteLLM, Ollama, or subscription).{% if include_sandbox %}
+
 ### The agent sandbox
 
 An optional Docker-Compose sandbox runs the agents in a container with only the
@@ -145,4 +166,4 @@ repo mounted, so a hijacked agent can't reach host secrets. It is an additional
 layer on top of the permission system, not a replacement — and it deliberately
 does *not* block network egress. See [The agent sandbox](sandbox.md) for the
 isolation model and [Run the sandbox](../how-to/run-the-sandbox.md) for commands.
-{% endif %}
+{%- endif %}

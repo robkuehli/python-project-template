@@ -6,14 +6,14 @@
   pre-commit install`) need it; see
   [Astral's install guide](https://docs.astral.sh/uv/getting-started/installation/).
 - **Unix-like shell** — macOS, Linux, or Windows with **WSL2 + Developer Mode**.
-  One of the post-generation tasks rebuilds a `docs/skills` symlink via
-  `ln -s`, which requires symlink support. Plain Windows (PowerShell / cmd
-  without WSL2) is not supported.
+  Post-generation tasks rebuild the `docs/skills` symlink and, when Codex or Pi
+  is selected, the `.agents/skills` discovery symlink via `ln -s`. Plain
+  Windows (PowerShell / cmd without WSL2) is not supported.
 
 ## Install Copier
 
 ```bash
-uv tool install copier
+uv tool install copier==9.17.1
 ```
 
 ## Generate a new project
